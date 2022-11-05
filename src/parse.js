@@ -2,30 +2,30 @@ const path = require('path')
 const { ImporterFactory } = require('xlsx-import/lib/ImporterFactory')
 const { adapt, validate, validateConfig, validateMultiConfig } = require('./analyze.js')
 
-class CannotParseFile extends Error {
+class ParsingError extends Error {
     constructor(filename, message) {
         super(message)
-        this.name = 'CannotParseFile'
+        this.name = 'ParsingError'
         this.filename = filename
     }
 }
-class ConfigInvalid extends CannotParseFile {
+class ConfigInvalid extends ParsingError {
     constructor(filename, errors) {
         super(filename, `cannot parse ${filename}, config is invalid.`)
         this.name = 'ConfigInvalid'
         this.errors = errors
     }
 }
-class UnsupportedFileFormat extends CannotParseFile {
+class UnsupportedFileFormat extends ParsingError {
     constructor(filename, ext) {
-        super(filename, `cannot parse ${filename} unsupported file format *${ext}.`)
+        super(filename, `cannot parse ${filename} unsupported file format: *${ext}.`)
         this.name = 'UnsupportedFileFormat'
         this.ext = ext
     }
 }
 
 class Errors {
-    static CannotParseFile = CannotParseFile
+    static ParsingError = ParsingError
     static ConfigInvalid = ConfigInvalid
     static UnsupportedFileFormat = UnsupportedFileFormat
 }
