@@ -36,4 +36,15 @@ describe('validate', function () {
         const [error] = await validate(filename, config)
         assert.ok(error instanceof Errors.IncorrectRowOffset, `Expected error to be an instance of 'IncorrectRowOffset' but got: '${error.constructor.name}'`)
     })
+    it('IncorrectColumnIndex', async function () {
+        const configCopy = Object.assign({}, config, { rowOffset: 1 })
+        const [error] = await validate(filename, configCopy)
+        assert.ok(
+            error instanceof Errors.IncorrectColumnIndex,
+            `Expected error to be an instance of 'IncorrectColumnIndex' but got: '${error.constructor.name}'`
+        )
+    })
+    it('MissingDataHeader')
+    it('DataHeaderNotInConfig')
+    it('InvalidData')
 })
