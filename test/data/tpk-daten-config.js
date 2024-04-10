@@ -3,7 +3,7 @@ const tpkDatenConfig = {
     type: 'list',
     rowOffset: 15,
     columns: [
-        { index: 7, key: 'internal-build-up' },
+        { index: 7, key: 'internal-build-up', mapper: Date },
         { index: 8, key: 'external-build-up' },
         { index: 9, key: 'event-from' },
         { index: 10, key: 'event-to' },

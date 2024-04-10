@@ -31,23 +31,32 @@ class ConfigInvalid extends ValidationError {
 
 class SheetMissing extends ValidationError {
     constructor(filename, worksheet) {
-        super(filename, worksheet, `Worksheet: ${worksheet} is missing.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' is missing.`)
         this.name = 'SheetMissing'
     }
 }
 
 class InconsistentSheetName extends ValidationError {
     constructor(filename, worksheet, config) {
-        super(filename, config.worksheet, `Worksheet: ${config.worksheet} is present but named inconsistent.`)
+        super(filename, config.worksheet, `Worksheet: '${config.worksheet}' is present but named inconsistent.`)
         this.name = 'InconsistentSheetName'
         this.key = 'worksheet'
         this.actual = worksheet
     }
 }
 
+class InconsistentHeaderName extends ValidationError {
+    constructor(filename, worksheet, key, actual) {
+        super(filename, worksheet, `Worksheet: '${worksheet}' data header for: '${key}' is present but named inconsistent.`)
+        this.name = 'InconsistentHeaderName'
+        this.key = key
+        this.actual = actual
+    }
+}
+
 class ColumnHeadersNotFound extends ValidationError {
     constructor(filename, worksheet) {
-        super(filename, worksheet, `Worksheet: ${worksheet} column headers not found.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' column headers not found.`)
         this.name = 'ColumnHeadersNotFound'
         this.key = 'columnHeaders'
     }
@@ -55,7 +64,7 @@ class ColumnHeadersNotFound extends ValidationError {
 
 class IncorrectRowOffset extends ValidationError {
     constructor(filename, worksheet, key, actual) {
-        super(filename, worksheet, `Worksheet: ${worksheet} rowOffset seems to be: ${actual}.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' rowOffset seems to be: ${actual}.`)
         this.name = 'IncorrectRowOffset'
         this.key = key
         this.actual = actual
@@ -64,8 +73,17 @@ class IncorrectRowOffset extends ValidationError {
 
 class IncorrectColumnIndex extends ValidationError {
     constructor(filename, worksheet, key, actual) {
-        super(filename, worksheet, `Worksheet: ${worksheet} column index: ${key} seems to be: ${actual}.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${actual}.`)
         this.name = 'IncorrectColumnIndex'
+        this.key = key
+        this.actual = actual
+    }
+}
+
+class IncorrectRowIndex extends ValidationError {
+    constructor(filename, worksheet, key, actual) {
+        super(filename, worksheet, `Worksheet: '${worksheet}' row index: '${key}' seems to be: ${actual}.`)
+        this.name = 'IncorrectRowIndex'
         this.key = key
         this.actual = actual
     }
@@ -73,7 +91,7 @@ class IncorrectColumnIndex extends ValidationError {
 
 class MissingDataHeader extends ValidationError {
     constructor(filename, worksheet, key, header) {
-        super(filename, worksheet, `Worksheet: ${worksheet} data header for: ${key} is missing.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' data header for: '${key}' is missing.`)
         this.name = 'MissingDataHeader'
         this.key = key
         this.header = header
@@ -82,7 +100,7 @@ class MissingDataHeader extends ValidationError {
 
 class DataHeaderNotInConfig extends ValidationError {
     constructor(filename, worksheet, header, index) {
-        super(filename, worksheet, `Worksheet: ${worksheet} data header: ${header} not in config.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' data header: '${header.replace('\n', '\\n')}' not in config.`)
         this.name = 'DataHeaderNotInConfig'
         this.header = header
         this.index = index
@@ -91,7 +109,7 @@ class DataHeaderNotInConfig extends ValidationError {
 
 class InvalidData extends ValidationError {
     constructor(filename, worksheet, key) {
-        super(filename, worksheet, `Worksheet: ${worksheet} key: ${key} contains invalid data.`)
+        super(filename, worksheet, `Worksheet: '${worksheet}' key: '${key}' contains invalid data.`)
         this.name = 'InvalidData'
         this.key = key
     }
@@ -102,10 +120,12 @@ class Errors {
     static FileNotExists = FileNotExists
     static ConfigInvalid = ConfigInvalid
     static SheetMissing = SheetMissing
+    static InconsistentHeaderName = InconsistentHeaderName
     static InconsistentSheetName = InconsistentSheetName
     static ColumnHeadersNotFound = ColumnHeadersNotFound
     static IncorrectRowOffset = IncorrectRowOffset
     static IncorrectColumnIndex = IncorrectColumnIndex
+    static IncorrectRowIndex = IncorrectRowIndex
     static MissingDataHeader = MissingDataHeader
     static DataHeaderNotInConfig = DataHeaderNotInConfig
     static InvalidData = InvalidData
@@ -165,7 +185,7 @@ function adapt(config, errors) {
                 }
                 // TODO : missing data headers
                 const missingDataHeaders = errors.filter(function (error) {
-                    return error.name === 'DataHeaderNotInConfig'
+                    return error.name === 'MissingDataHeader'
                 })
             } else {
             }
@@ -215,7 +235,7 @@ async function validate(filename, config) {
                 await workbook.xlsx.readFile(filename)
             } catch (error) {
                 errors.push(error)
-                // early break out because we cannot access the file
+                // early break out the switch statement, because we cannot access the file
                 break
             }
             // 2. check if worksheet is present
@@ -230,13 +250,13 @@ async function validate(filename, config) {
                 threshold: 0.3,
                 distance: config.worksheet.length
             })
-            const sheets = fuse.search(config.worksheet)
-            if (!sheets.length) {
+            const searchSheet = fuse.search(config.worksheet)
+            if (!searchSheet.length) {
                 errors.push(new SheetMissing(filename, config.worksheet))
-                // early break out the switch statement, because we cannot access the sheet
+                // early break out the switch statement, because the sheet can't be accessed
                 break
             }
-            const { item: sheetName, score } = sheets[0]
+            const { item: sheetName, score } = searchSheet[0]
             if (score >= 0.001) {
                 errors.push(new InconsistentSheetName(filename, sheetName, config))
             }
@@ -261,8 +281,9 @@ async function validate(filename, config) {
                     })
                 })
             const { columns, fields } = config
-            if (columns) {
-                // testing columns first tries to find the data header row
+            if (columns != null && columns != undefined) {
+                // testing columns
+                // tries to find the data header row of a list
                 // by joining the data into an array of strings and then
                 // makes a fuzzy search for the headers in the new array
                 // if the headers could be found it will test if the column
@@ -272,7 +293,7 @@ async function validate(filename, config) {
                 // in the config
                 const rowOffset = config.rowOffset > -1 ? config.rowOffset : 0
                 const columnHeaders = config.columnHeaders ? config.columnHeaders : []
-                const columnKeys = config.columns.reduce(function (keys, column) {
+                const columnKeys = columns.reduce(function (keys, column) {
                     keys.push(column.key)
                     return keys
                 }, [])
@@ -297,14 +318,14 @@ async function validate(filename, config) {
                     const findHeaderRow = new Fuse(expandedData, {
                         includeScore: true,
                         location: 0,
-                        threshold: 0.7,
+                        threshold: 0.8,
                         distance: joinedHeads.length
                     })
-                    const [search] = findHeaderRow.search(joinedHeads)
-                    if (search.score >= 0.3) {
+                    const [searchHeaderRow] = findHeaderRow.search(joinedHeads)
+                    if (searchHeaderRow.score >= 0.8) {
                         errors.push(new ColumnHeadersNotFound(filename, sheetName))
                     } else {
-                        const { item: found, refIndex } = search
+                        const { item: found, refIndex } = searchHeaderRow
                         if (rowOffset - 1 !== refIndex) {
                             errors.push(new IncorrectRowOffset(filename, sheetName, 'columnHeaders', refIndex + 1))
                         }
@@ -314,7 +335,8 @@ async function validate(filename, config) {
                             accu.push(curr.split(','))
                             return accu
                         }, [])
-                        // 2. reduce headers and cells into one row for fuzzy search
+                        // 2. reduce headers and cells into one string for fuzzy search
+                        //    rows are separated by newlines
                         const reduceToOneRow = function (accu, curr, index) {
                             if (accu.length < curr.length) {
                                 const loop = curr.length - accu.length
@@ -338,14 +360,16 @@ async function validate(filename, config) {
                         })
                         for (let cCnt = 0; cCnt < columnHeads.length; cCnt++) {
                             // compare column indices and save differences
+                            // TODO : swapped headers
+                            //		  1. simple swap, headers are moved one column
+                            //		  2. complex swap, headers are moved more than one column
                             const colHead = columnHeads[cCnt]
                             findHeader.options.distance = colHead.length
                             const [pose] = findHeader.search(colHead)
-                            if (pose) {
+                            if (pose !== null && pose !== undefined) {
                                 const { refIndex } = pose
                                 const colOffset = config.columns[cCnt].index - 1
                                 if (colOffset !== refIndex) {
-                                    // TODO : swapped headers
                                     // if fuzzy search fails. we try to find the header the hard way
                                     // the hard way goes like this:
                                     // first make a check string from the header and it's neighbors
@@ -381,6 +405,7 @@ async function validate(filename, config) {
                             } else {
                                 errors.push(new MissingDataHeader(filename, sheetName, columnKeys[cCnt], colHead))
                             }
+                            // FIX : test for inconsistent header names, too
                         }
                         // 4. fuzzy search new data headers
                         const findData = new Fuse(columnHeads, {
@@ -393,27 +418,71 @@ async function validate(filename, config) {
                             const cell = columnCells[cCnt]
                             findData.options.distance = cell.length
                             const [pose] = findData.search(cell)
-                            if (!pose && cell !== '') {
+                            if (!pose || pose.score > 0) {
                                 errors.push(new DataHeaderNotInConfig(filename, sheetName, cell, cCnt))
                             }
                         }
                     }
                 }
-                // TODO : validate list data
             }
-            if (fields) {
+            if (fields != null && fields != undefined) {
                 // testing fields
+                // tries to find the data header of a field
+                // by first testing common patterns of header positions
+                // around the indicated data position
+                // if the header can't be found the whole sheet is searched
+                // for the data header
                 for (let fCnt = 0; fCnt < fields.length; fCnt++) {
                     const field = fields[fCnt]
-                    const row = data[field.row - 1]
-                    const cell = row[field.col - 1]
-                    // TODO : check mappers
-                    if (!cell) {
-                        errors.push(new InvalidData(filename, sheetName, field.key))
+                    const { header } = field
+                    if (header != null && header != undefined) {
+                        // check expected header patterns to verify position
+                        const top = data[field.row - 2][field.col - 1]
+                        const left = data[field.row - 1][field.col - 2]
+                        const right = data[field.row - 1][field.col]
+                        const bottom = data[field.row][field.col - 1]
+                        const window = [left, top, right, bottom].map((c) => (typeof c === 'string' ? c : ''))
+                        const findHeader = new Fuse(window, {
+                            includeScore: true,
+                            location: 0,
+                            threshold: 0.3,
+                            distance: header.length
+                        })
+                        const [searchHeader] = findHeader.search(header)
+                        if (searchHeader === null || searchHeader === undefined) {
+                            // search for the data header elsewhere on the sheet
+                            const rows = data.reduce(function (accu, curr, index) {
+                                curr.reduce(function (a, c, i) {
+                                    a.push({
+                                        row: index,
+                                        col: i,
+                                        value: typeof c === 'string' ? c : ''
+                                    })
+                                    return a
+                                }, accu)
+                                return accu
+                            }, [])
+                            const findPosition = new Fuse(rows, {
+                                includeScore: true,
+                                location: 0,
+                                threshold: 0.3,
+                                keys: ['value']
+                            })
+                            const [pose] = findPosition.search(header)
+                            if (pose === null || pose === undefined) {
+                                errors.push(new MissingDataHeader(filename, sheetName, field.key, header))
+                            } else {
+                                const { item: cell } = pose
+                                if (cell.row != field.row) errors.push(new IncorrectRowIndex(filename, sheetName, field.key, cell.row))
+                                if (cell.col != field.col) errors.push(new IncorrectColumnIndex(filename, sheetName, field.key, cell.col))   
+                            }
+                        } else if (searchHeader.score >= 0.001) {
+                            errors.push(new InconsistentHeaderName(filename, sheetName, field.key, searchHeader.item))
+                        }
                     }
                 }
-                // TODO : validate object data
             }
+            // end case: validate a single config
             break
     }
 
@@ -430,3 +499,21 @@ module.exports = {
 // validateData
 // validateListData
 // validateFieldData
+
+// IDEA : maybe it's better to validate the data not in the same function as where the file is tested
+//        + can use errors generated so far
+//		  + a separate validation function can be used on it's own
+//        - needs another function
+//        maybe it's not better or equal
+//		  + we already have a large function making it even larger is not a problem
+
+// TODO : validate list data
+// TODO : validate field data
+// TODO : test only a few rows of a list
+// TODO : check errors first to avoid testing data
+//        that has already been tested
+//        ColumnHeadersNotFound : no data to test since we can't find the beginning of the list
+//								  or maybe test some data on the config params anyway?
+//        MissingDataHeader     : the column of the missing data header might not be found, therfore the data might be wrong anyway
+//        IncorrectRowOffset:   : simply adapt to the correct row
+//        IncorrectColumnIndex  : simply adapt to the correct column
