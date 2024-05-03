@@ -14,9 +14,7 @@ const billConfig = {
             { row: 14, col: 2, key: 'ideal-areas', header: 'Ideelle Flächen', mapper: (value) => Number(value) },
             { row: 15, col: 2, key: 'drk-station', header: 'DRK-Stationen', mapper: (value) => Number(value) },
             { row: 16, col: 2, key: 'cash-desk', header: 'Kassen', mapper: (value) => Number(value) },
-            { row: 17, col: 2, key: 'additionally', header: 'Zusatzarbeiten aus Hallenrücknahme', mapper: (value) => Number(value) },
-            { row: 18, col: 2, key: 'missing', header: 'missing' },
-            { row: 19, col: 2, key: 'moved', header: 'moved', mapper: (value) => Number(value) }
+            { row: 17, col: 2, key: 'additionally', header: 'Zusatzarbeiten aus Hallenrücknahme', mapper: (value) => Number(value) }
         ]
     },
     halls: {

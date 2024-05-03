@@ -4,6 +4,7 @@ const Fuse = require('fuse.js')
 
 const { validateColumns, validateFields, validateConfig, validateMultiConfig } = require('./xlsx-schema.js')
 
+// TODO : rename to analysation error
 // validation errors
 class ValidationError extends Error {
     constructor(filename, worksheet, message) {
@@ -54,10 +55,10 @@ class InconsistentHeaderName extends ValidationError {
     }
 }
 
-class ColumnHeadersNotFound extends ValidationError {
+class ColumnHeadersMissing extends ValidationError {
     constructor(filename, worksheet) {
-        super(filename, worksheet, `Worksheet: '${worksheet}' column headers not found.`)
-        this.name = 'ColumnHeadersNotFound'
+        super(filename, worksheet, `Worksheet: '${worksheet}' column headers are missing.`)
+        this.name = 'ColumnHeadersMissing'
         this.key = 'columnHeaders'
     }
 }
@@ -122,7 +123,7 @@ class Errors {
     static SheetMissing = SheetMissing
     static InconsistentHeaderName = InconsistentHeaderName
     static InconsistentSheetName = InconsistentSheetName
-    static ColumnHeadersNotFound = ColumnHeadersNotFound
+    static ColumnHeadersMissing = ColumnHeadersMissing
     static IncorrectRowOffset = IncorrectRowOffset
     static IncorrectColumnIndex = IncorrectColumnIndex
     static IncorrectRowIndex = IncorrectRowIndex
@@ -197,12 +198,12 @@ function adapt(config, errors) {
 }
 
 /**
- * Validate a *.xlsx file with a configuration. Returning the differences.
+ * Analyze a *.xlsx file against a configuration. Returning the differences.
  * @param {String} filename
  * @param {Object} config
  * @returns {[ValidationError]} errors
  */
-async function validate(filename, config) {
+async function analyze(filename, config, { sheetMissingThreshold = 0, inconsistentSheetNameScore = 0.001 } = {}) {
     try {
         await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
     } catch (error) {
@@ -223,7 +224,7 @@ async function validate(filename, config) {
             // validate a multi config
             for (const key in config) {
                 const subConfig = config[key]
-                errors.push(...(await validate(filename, subConfig)))
+                errors.push(...(await analyze(filename, subConfig)))
             }
             break
 
@@ -246,9 +247,7 @@ async function validate(filename, config) {
             // use fuzzy search because of inconsistency in sheet naming
             const fuse = new Fuse(sheetNames, {
                 includeScore: true,
-                location: 0,
-                threshold: 0.3,
-                distance: config.worksheet.length
+                threshold: sheetMissingThreshold
             })
             const searchSheet = fuse.search(config.worksheet)
             if (!searchSheet.length) {
@@ -257,7 +256,7 @@ async function validate(filename, config) {
                 break
             }
             const { item: sheetName, score } = searchSheet[0]
-            if (score >= 0.001) {
+            if (score >= inconsistentSheetNameScore) {
                 errors.push(new InconsistentSheetName(filename, sheetName, config))
             }
             // 3. check if fields or columns are present
@@ -281,7 +280,7 @@ async function validate(filename, config) {
                     })
                 })
             const { columns, fields } = config
-            if (columns != null && columns != undefined) {
+            if (columns !== null && columns !== undefined) {
                 // testing columns
                 // tries to find the data header row of a list
                 // by joining the data into an array of strings and then
@@ -315,15 +314,10 @@ async function validate(filename, config) {
                         expandedData.push(joinedRows.slice(pCnt, pCnt + columnHeaders.length).join('\n'))
                     }
                     // search the header row
-                    const findHeaderRow = new Fuse(expandedData, {
-                        includeScore: true,
-                        location: 0,
-                        threshold: 0.8,
-                        distance: joinedHeads.length
-                    })
+                    const findHeaderRow = new Fuse(expandedData, { includeScore: true })
                     const [searchHeaderRow] = findHeaderRow.search(joinedHeads)
-                    if (searchHeaderRow.score >= 0.8) {
-                        errors.push(new ColumnHeadersNotFound(filename, sheetName))
+                    if (searchHeaderRow == null || searchHeaderRow === undefined) {
+                        errors.push(new ColumnHeadersMissing(filename, sheetName))
                     } else {
                         const { item: found, refIndex } = searchHeaderRow
                         if (rowOffset - 1 !== refIndex) {
@@ -402,10 +396,12 @@ async function validate(filename, config) {
                                     if (check !== window) windowCnt = colOffset + 1
                                     errors.push(new IncorrectColumnIndex(filename, sheetName, config.columns[cCnt].key, windowCnt))
                                 }
+                                if (pose.score >= 0.001) {
+                                    errors.push(new InconsistentHeaderName(filename, sheetName, config.columns[cCnt].key, pose.item))
+                                }
                             } else {
                                 errors.push(new MissingDataHeader(filename, sheetName, columnKeys[cCnt], colHead))
                             }
-                            // FIX : test for inconsistent header names, too
                         }
                         // 4. fuzzy search new data headers
                         const findData = new Fuse(columnHeads, {
@@ -425,7 +421,7 @@ async function validate(filename, config) {
                     }
                 }
             }
-            if (fields != null && fields != undefined) {
+            if (fields !== null && fields !== undefined) {
                 // testing fields
                 // tries to find the data header of a field
                 // by first testing common patterns of header positions
@@ -435,7 +431,7 @@ async function validate(filename, config) {
                 for (let fCnt = 0; fCnt < fields.length; fCnt++) {
                     const field = fields[fCnt]
                     const { header } = field
-                    if (header != null && header != undefined) {
+                    if (header !== null && header !== undefined) {
                         // check expected header patterns to verify position
                         const top = data[field.row - 2][field.col - 1]
                         const left = data[field.row - 1][field.col - 2]
@@ -473,8 +469,8 @@ async function validate(filename, config) {
                                 errors.push(new MissingDataHeader(filename, sheetName, field.key, header))
                             } else {
                                 const { item: cell } = pose
-                                if (cell.row != field.row) errors.push(new IncorrectRowIndex(filename, sheetName, field.key, cell.row))
-                                if (cell.col != field.col) errors.push(new IncorrectColumnIndex(filename, sheetName, field.key, cell.col))   
+                                if (cell.row != field.row - 1) errors.push(new IncorrectRowIndex(filename, sheetName, field.key, cell.row + 1))
+                                if (cell.col != field.col - 1) errors.push(new IncorrectColumnIndex(filename, sheetName, field.key, cell.col + 1))
                             }
                         } else if (searchHeader.score >= 0.001) {
                             errors.push(new InconsistentHeaderName(filename, sheetName, field.key, searchHeader.item))
@@ -489,31 +485,36 @@ async function validate(filename, config) {
     return errors
 }
 
+/**
+ * Parse a *.xlsx file into a data object.
+ * @param {String} filename
+ * @param {Object} config
+ */
+function parse(filename, config) {}
+
+/**
+ * Validate a *.xlsx files data against a configuration. Returning invalid data points.
+ * @param {String} filename
+ * @param {Object} config
+ */
+function validate(filename, config) {}
+
 module.exports = {
     adapt,
-    validate,
+    analyze,
     Errors
 }
 
+// NOTE : analyze() => validate() => adapt() => parse()
+//        calling parse() first will apply the above chain
+
 // TODO :
-// validateData
-// validateListData
-// validateFieldData
+// [ ]  : validateData
+// [ ]  : make a parse() function
+// [ ]  : make a cache for analyze()
+// [ ]  : make default parameters for analyze()
+// [ ]  : add optional parameters to analyze() for adapting the search behavior
 
-// IDEA : maybe it's better to validate the data not in the same function as where the file is tested
-//        + can use errors generated so far
-//		  + a separate validation function can be used on it's own
-//        - needs another function
-//        maybe it's not better or equal
-//		  + we already have a large function making it even larger is not a problem
-
-// TODO : validate list data
-// TODO : validate field data
-// TODO : test only a few rows of a list
-// TODO : check errors first to avoid testing data
-//        that has already been tested
-//        ColumnHeadersNotFound : no data to test since we can't find the beginning of the list
-//								  or maybe test some data on the config params anyway?
-//        MissingDataHeader     : the column of the missing data header might not be found, therfore the data might be wrong anyway
-//        IncorrectRowOffset:   : simply adapt to the correct row
-//        IncorrectColumnIndex  : simply adapt to the correct column
+// [x]  : analyzeListData
+// [x]  : analyzeFieldData
+// [x]  : rename validate() to analyze()
