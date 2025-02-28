@@ -1,6 +1,5 @@
 const Ajv = require("ajv")
 
-// .xlsx configuration schemas used by xlsx-import
 const columnsSchema = {
     $id: 'columns',
     type: 'array',
@@ -10,7 +9,6 @@ const columnsSchema = {
         properties: {
             index: { type: 'integer' },
             key: { type: 'string' },
-            /* mapper: { type: 'object' } */
         },
         required: ['index', 'key']
     }
@@ -26,7 +24,6 @@ const fieldsSchema = {
             row: { type: 'integer' },
             col: { type: 'integer' },
             key: { type: 'string' },
-            /* mapper: { type: 'object' } */
         },
         required: ['row', 'col', 'key']
     }
