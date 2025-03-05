@@ -1,4 +1,4 @@
 node_modules
-real
-temp
-.~lock.*
+test/data/real
+test/data/temp
+*.~lock.*
