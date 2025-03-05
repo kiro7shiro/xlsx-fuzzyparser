@@ -1,9 +1,10 @@
+// TODO : redefine schema to add headers
 const Ajv = require("ajv")
 
 const columnsSchema = {
     $id: 'columns',
     type: 'array',
-    minItems: 1,
+    minItems: 0,
     items: {
         type: 'object',
         properties: {
@@ -17,7 +18,7 @@ const columnsSchema = {
 const fieldsSchema = {
     $id: 'fields',
     type: 'array',
-    minItems: 1,
+    minItems: 0,
     items: {
         type: 'object',
         properties: {

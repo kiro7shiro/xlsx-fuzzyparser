@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
 const { validateColumns, validateFields, validateConfig, validateMultiConfig } = require('./config.js')
+const { loadIndex, getWorksheetData } = require('./files.js')
 
 class AnalysationError extends Error {
     constructor(filename, worksheet, message) {
@@ -182,28 +183,34 @@ function adapt(config, errors) {
 
     return adaption
 }
+
 /**
  * Analyze a *.xlsx file by a given configuration. Returning the differences as errors.
  * @param {String} filename a string containing path and filename for the workbook to be analyzed
  * @param {Object} config an object holding the configuration the file is analyzed against
  * @param {Object} [options]
- * @param {Number} [options.sheetMissingThreshold] fuzzy search threshold to determine missing sheets
- * @param {Number} [options.inconsistentSheetNameScore] fuzzy search score to determine inconsistent sheet names
- * @param {Number} [options.missingHeaderThreshold] fuzzy search threshold to determine missing headers
- * @param {Number} [options.inconsistentHeaderScore] fuzzy search score to determine inconsistent headers
- * @param {Number} [options.rowDeviation] allowed row deviation to be considered a match
- * @param {Number} [options.colDeviation] allowed col deviation to be considered a match
+ * @param {Number} [options.inconsistentScore] fuzzy search score to determine inconsistency 
+ * @param {Number} [options.inconsistentSheetNameScore] 
  * @returns {[AnalysationError]} errors
  */
 async function analyze(
     filename,
     config,
     {
-        sheetMissingThreshold = 0.2,
-        inconsistentSheetNameScore = 0.001,
-        missingHeaderThreshold = 0.2,
-        inconsistentHeaderScore = 0.001,
-        incorrectHeaderDistance = 6
+        inconsistentScore = 0.001,
+        incorrectDistance = 6,
+        sheetEngineOptions = {
+            includeScore: true,
+            isCaseSensitive: true,
+            threshold: 0.4,
+            keys: ['name']
+        },
+        headEngineOptions = {
+            includeScore: true,
+            isCaseSensitive: true,
+            threshold: 0.4,
+            keys: ['text']
+        }
     } = {}
 ) {
     // check file access
@@ -222,6 +229,7 @@ async function analyze(
             throw new ConfigInvalid([...validateConfig.errors, ...validateMultiConfig.errors])
         case isMultiConfig:
             // analyze a multi config
+            // TODO : optimize program flow and load workbook first before analyzing each config
             for (const key in config) {
                 const subConfig = config[key]
                 errors.push(...(await analyze(filename, subConfig)))
@@ -239,12 +247,8 @@ async function analyze(
                 break
             }
             // 2. check if sheet is present
-            const findSheet = new Fuse(workbook.worksheets, {
-                includeScore: true,
-                threshold: sheetMissingThreshold,
-                keys: ['name']
-            })
-            const searchSheet = findSheet.search(config.worksheet)
+            const sheetEngine = new Fuse(workbook.worksheets, sheetEngineOptions)
+            const searchSheet = sheetEngine.search(config.worksheet)
             if (searchSheet.length === 0) {
                 errors.push(new SheetMissing(filename, config.worksheet))
                 // early break out the switch statement, because the sheet can't be accessed
@@ -252,7 +256,7 @@ async function analyze(
             }
             // pick the first sheet
             const { item: sheet, score: sheetNameScore } = searchSheet[0]
-            if (sheetNameScore >= inconsistentSheetNameScore) {
+            if (sheetNameScore >= inconsistentScore) {
                 errors.push(new InconsistentSheetName(filename, sheet.name, config))
             }
             if (sheet.lastRow === undefined && sheet.lastColumn === undefined) {
@@ -260,85 +264,57 @@ async function analyze(
                 break
             }
             // 3. check if fields or columns are present
-            // FIXME : optimize program flow check fields and columns length before initializing the search
+            const descriptors = config.type === 'object' ? config.fields : config.columns
+            // early break out the switch statement, if we cannot make any search
+            if (descriptors.length === 0) break
+            const data = getWorksheetData(sheet)
             // FIXME : empty merged cells produce an error when trying to create a fuse index
-            // FIXME : make the error check in the loop more robust if possible
-            const data = []
-            sheet.eachRow(function (row) {
-                row.eachCell(function (cell) {
-                    try {
-                        // the next statement is the actual error check
-                        // if we can't access the text property of a cell
-                        // it will be filtered out of our data
-                        const check = cell.text
-                        data.push(cell)
-                    } catch (error) {}
-                })
-            })
-            const sheetIndex = Fuse.createIndex(['text'], data)
-            const sheetFuse = new Fuse(
-                data,
-                {
-                    includeScore: true,
-                    keys: ['text']
-                },
-                sheetIndex
-            )
-            if (config.type === 'object') {
-                // early break out the switch statement, if we cannot make any search
-                if (config.fields.length === 0) break
-                // start searching
-                for (let fieldIndex = 0; fieldIndex < config.fields.length; fieldIndex++) {
-                    const field = config.fields[fieldIndex]
-                    if (!field.header) continue
-                    const searchObjectHeader = sheetFuse.search(field.header.text)
-                    let found = false
-                    for (let matchIndex = 0; matchIndex < searchObjectHeader.length; matchIndex++) {
-                        const match = searchObjectHeader[matchIndex]
-                        const { item: cell } = match
-                        const rowError = cell.row - field.header.row
-                        const colError = cell.col - field.header.col
-                        const manhattanDistance = Math.abs(rowError) + Math.abs(colError)
-                        if (manhattanDistance < incorrectHeaderDistance && match.score < missingHeaderThreshold) {
-                            found = true
-                            if (match.score >= inconsistentHeaderScore) {
-                                errors.push(new InconsistentHeaderName(filename, sheet.name, field.key, cell.text))
-                            }
-                            if (rowError !== 0) errors.push(new IncorrectRowIndex(filename, sheet.name, field.key, field.header.row + rowError))
-                            if (colError !== 0) errors.push(new IncorrectColumnIndex(filename, sheet.name, field.key, field.header.col + colError))
-                        }
+            const sheetIndex = Fuse.createIndex(['text' /* , 'row', 'col' */], data)
+            for (let descriptorIndex = 0; descriptorIndex < descriptors.length; descriptorIndex++) {
+                const descriptor = descriptors[descriptorIndex]
+                if (!Object.hasOwn(descriptor, 'header')) continue
+                if (!Array.isArray(descriptor.header)) continue
+                if (descriptor.header.length === 0) continue
+                let results = []
+                //console.log(descriptor)
+                for (let headerIndex = 0; headerIndex < descriptor.header.length; headerIndex++) {
+                    const header = descriptor.header[headerIndex]
+                    //console.log(header)
+                    const headEngine = new Fuse(data, Object.assign({}, headEngineOptions, { distance: header.text.length }), sheetIndex)
+                    const matches = headEngine
+                        .search(header.text)
+                        .reduce(function (accu, match) {
+                            match.rowError = match.item.row - header.row
+                            match.colError = match.item.col - header.col
+                            match.text = match.item.text
+                            //match.address = `R${match.item.row}C${match.item.col}`
+                            match.distance = Math.abs(match.rowError) + Math.abs(match.colError)
+                            if (match.distance < incorrectDistance) accu.push(match)
+                            return accu
+                        }, [])
+                        .sort(function (a, b) {
+                            if (a.score === b.score) return a.distance - b.distance
+                            return 0
+                        })
+                    if (matches.length === 0) {
+                        errors.push(new MissingDataHeader(filename, sheet.name, descriptor.key, header.text))
+                        continue
                     }
-                    if (!found) {
-                        errors.push(new MissingDataHeader(filename, sheet.name, field.key, field.header.text))
-                    }
+                    ///console.table(matches)
+                    // pick the first match
+                    results.push(matches[0])
                 }
-            } else if (config.type === 'list') {
-                // early break out the switch statement, if we cannot make any search
-                if (config.columns.length === 0) break
-                // start searching
-                for (let columnIndex = 0; columnIndex < config.columns.length; columnIndex++) {
-                    const column = config.columns[columnIndex]
-                    if (!column.header) continue
-                    const searchColumn = sheetFuse.search(column.header)
-                    let found = false
-                    for (let searchIndex = 0; searchIndex < searchColumn.length; searchIndex++) {
-                        const match = searchColumn[searchIndex]
-                        const { item: cell } = match
-                        const rowError = cell.row - config.rowOffset
-                        const colError = cell.col - column.index
-                        const manhattanDistance = Math.abs(rowError) + Math.abs(colError)
-                        if (manhattanDistance < incorrectHeaderDistance && match.score < missingHeaderThreshold) {
-                            found = true
-                            if (match.score >= inconsistentHeaderScore) {
-                                errors.push(new InconsistentHeaderName(filename, sheet.name, column.key, cell.text))
-                            }
-                            if (rowError !== 0) errors.push(new IncorrectRowIndex(filename, sheet.name, column.key, config.rowOffset + rowError))
-                            if (colError !== 0) errors.push(new IncorrectColumnIndex(filename, sheet.name, column.key, column.index + colError))
-                        }
-                    }
-                    if (!found) {
-                        errors.push(new MissingDataHeader(filename, sheet.name, column.key, column.header))
-                    }
+                //console.table(results)
+                // TODO : if config.type === list check if columns are in line
+                // TODO : check if multi cell headers are in line vertical or horizontal
+                // TODO : add a header identifier to row and col errors
+                for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
+                    const result = results[resultIndex]
+                    if (result.score >= inconsistentScore) errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text))
+                    if (result.rowError !== 0)
+                        errors.push(new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError))
+                    if (result.colError !== 0)
+                        errors.push(new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError))
                 }
             }
             break
@@ -394,22 +370,6 @@ async function parse(filename, config) {
     return result
 }
 
-async function read(filename) {
-    let workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.readFile(filename)
-    let result = {}
-    for (let sheetIndex = 0; sheetIndex < workbook.worksheets.length; sheetIndex++) {
-        const worksheet = workbook.worksheets[sheetIndex]
-        const data = {
-            name: worksheet.name,
-            lastRow: worksheet.lastRow?.number || -1,
-            lastColumn: worksheet.lastColumn?.number || -1
-        }
-        result[worksheet.name] = data
-    }
-    return result
-}
-
 /**
  * Validate a *.xlsx files data against a configuration. Returning invalid data points.
  * @param {String} filename
@@ -420,7 +380,6 @@ function validate(filename, config) {}
 module.exports = {
     adapt,
     analyze,
-    read,
     parse,
     Errors
 }
