@@ -189,8 +189,10 @@ function adapt(config, errors) {
  * @param {String} filename a string containing path and filename for the workbook to be analyzed
  * @param {Object} config an object holding the configuration the file is analyzed against
  * @param {Object} [options]
- * @param {Number} [options.inconsistentScore] fuzzy search score to determine inconsistency 
- * @param {Number} [options.inconsistentSheetNameScore] 
+ * @param {Number} [options.inconsistentScore] fuzzy search score to determine inconsistency
+ * @param {Number} [options.incorrectDistance] distance above a descriptor is considered missing
+ * @param {Object} [options.sheetEngineOptions] fuzzy search options for searching sheet names
+ * @param {Object} [options.headEngineOptions] fuzzy search options for searching a descriptors header
  * @returns {[AnalysationError]} errors
  */
 async function analyze(
@@ -246,15 +248,23 @@ async function analyze(
                 errors.push(error)
                 break
             }
+            // 1.2 load index file
+            const fileIndex = await loadIndex(filename)
             // 2. check if sheet is present
-            const sheetEngine = new Fuse(workbook.worksheets, sheetEngineOptions)
+            let sheetNamesIndex = null
+            if (Object.hasOwn(fileIndex, 'sheetNamesIndex')) {
+                sheetNamesIndex = fileIndex['sheetNamesIndex']
+            } else {
+                sheetNamesIndex = Fuse.createIndex(sheetEngineOptions.keys, workbook.worksheets)
+            }
+            const sheetEngine = new Fuse(workbook.worksheets, sheetEngineOptions, sheetNamesIndex)
             const searchSheet = sheetEngine.search(config.worksheet)
             if (searchSheet.length === 0) {
                 errors.push(new SheetMissing(filename, config.worksheet))
                 // early break out the switch statement, because the sheet can't be accessed
                 break
             }
-            // pick the first sheet
+            // pick the first sheet as the match
             const { item: sheet, score: sheetNameScore } = searchSheet[0]
             if (sheetNameScore >= inconsistentScore) {
                 errors.push(new InconsistentSheetName(filename, sheet.name, config))
@@ -267,22 +277,28 @@ async function analyze(
             const descriptors = config.type === 'object' ? config.fields : config.columns
             // early break out the switch statement, if we cannot make any search
             if (descriptors.length === 0) break
+            // load sheet data and index
             const data = getWorksheetData(sheet)
-            // FIXME : empty merged cells produce an error when trying to create a fuse index
-            const sheetIndex = Fuse.createIndex(['text' /* , 'row', 'col' */], data)
+            let sheetIndex = null
+            if (Object.hasOwn(fileIndex, sheet.name)) {
+                sheetIndex = fileIndex[sheet.name]
+            } else {
+                sheetIndex = Fuse.createIndex(headEngineOptions.keys, data)
+            }
+            // 4. search descriptors
             for (let descriptorIndex = 0; descriptorIndex < descriptors.length; descriptorIndex++) {
                 const descriptor = descriptors[descriptorIndex]
                 if (!Object.hasOwn(descriptor, 'header')) continue
                 if (!Array.isArray(descriptor.header)) continue
                 if (descriptor.header.length === 0) continue
                 let results = []
-                //console.log(descriptor)
                 for (let headerIndex = 0; headerIndex < descriptor.header.length; headerIndex++) {
                     const header = descriptor.header[headerIndex]
                     //console.log(header)
                     const headEngine = new Fuse(data, Object.assign({}, headEngineOptions, { distance: header.text.length }), sheetIndex)
-                    const matches = headEngine
-                        .search(header.text)
+                    let matches = headEngine.search(header.text)
+                    //console.table(matches)
+                    matches = matches
                         .reduce(function (accu, match) {
                             match.rowError = match.item.row - header.row
                             match.colError = match.item.col - header.col
@@ -301,7 +317,7 @@ async function analyze(
                         continue
                     }
                     ///console.table(matches)
-                    // pick the first match
+                    // pick the first match as result
                     results.push(matches[0])
                 }
                 //console.table(results)
