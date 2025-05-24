@@ -17,7 +17,7 @@ const Fuse = require('fuse.js')
  * @param {Number} [options.rowCount=worksheet.rowCount] number of rows to retrieve
  * @param {Number} [options.startCol=1] column to start from
  * @param {Number} [options.colCount=worksheet.columnCount] number of columns to retrieve
- * @returns {Array} array of exceljs cell objects
+ * @returns {[ExcelJS.Cell]} array of exceljs cell objects
  */
 function getWorksheetData(worksheet, { startRow = null, rowCount = null, startCol = null, colCount = null } = {}) {
     // FIXME : empty merged cells produce an error when trying to create a fuse index, make a test 
@@ -28,14 +28,18 @@ function getWorksheetData(worksheet, { startRow = null, rowCount = null, startCo
     const endCol = startCol + colCount
     let data = []
     const rows = worksheet.getRows(startRow, rowCount)
+    if (!rows || rows.length === 0) {
+        return data
+    }
     for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
         const row = rows[rowIndex]
         for (let colIndex = startCol; colIndex < endCol; colIndex++) {
             const cell = row.getCell(colIndex)
-            if (cell.type === ExcelJS.ValueType.Null) continue
             if (cell.type === ExcelJS.ValueType.Merge) {
-                worksheet.unMergeCells(cell.address)
+                // TODO : implement two strategies: unmerge and keep values in master cell or unmerge and split values into the resulting cells
+                worksheet.unMergeCells(cell.master.address)
             }
+            if (cell.type === ExcelJS.ValueType.Null) continue
             data.push(cell)    
         }
     }

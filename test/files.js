@@ -32,10 +32,38 @@ describe('files', function () {
         it('load cells', async function () {
             const workbook = new ExcelJS.Workbook()
             await workbook.xlsx.readFile(testFile)
-            let testSheet = workbook.getWorksheet('Indexing')
+            let testSheet = workbook.getWorksheet('Data')
+            let data = getWorksheetData(testSheet)
+            assert.strictEqual(data.length, 152, `Data should be 152 items but got:${data.length}`)
+            assert.strictEqual(data[0].text, 'Column1', `First item should have text "Column1" but got:${data[0].text}`)
         })
-        it('load selected cells')
-        it('load and unmerge cells')
+        it('load selected cells', async function () {
+            const workbook = new ExcelJS.Workbook()
+            await workbook.xlsx.readFile(testFile)
+            let testSheet = workbook.getWorksheet('Data')
+            let row1 = getWorksheetData(testSheet, { rowCount: 1 })
+            assert.strictEqual(row1.length, 8, `Row one should have 8 items but got:${row1.length}`)
+            assert.strictEqual(row1[0].address, 'A1', `Row one first item should have address: A1 but got:${row1[0].address}`)
+            assert.strictEqual(row1[7].address, 'H1', `Row one last item should have address: H1 but got:${row1[7].address}`)
+            let square = getWorksheetData(testSheet, { startRow: 9, rowCount: 4, startCol: 3, colCount: 4 })
+            assert.strictEqual(square.length, 16, `Square should have 16 items but got:${square.length}`)
+            assert.strictEqual(square[0].address, 'C9', `Square first item should have address: C9 but got:${square[0].address}`)
+            assert.strictEqual(square[15].address, 'F12', `Square last item should have address: F12 but got:${square[15].address}`)
+        })
+        it('load and unmerge cells', async function () {
+            const workbook = new ExcelJS.Workbook()
+            await workbook.xlsx.readFile(testFile)
+            let testSheet = workbook.getWorksheet('Merged')
+            let data = getWorksheetData(testSheet)
+            /* console.table(
+                data.map((c) => {
+                    return { address: c.address, text: c.text }
+                })
+            ) */
+            assert.strictEqual(data.length, 16, `data should have 16 items but got:${data.length}`)
+            assert.strictEqual(data[0].text, 'Column1 Merge1', `data[0] should have text "Column1 Merge1" but got:${data[0].text}`)
+            assert.strictEqual(data[2].text, 'Column3 Merge2', `data[2] should have text "Column2 Merge2" but got:${data[0].text}`)
+        })
     })
 })
 
