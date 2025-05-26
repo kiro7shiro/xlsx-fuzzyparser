@@ -220,7 +220,7 @@ async function analyze(
         await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
     } catch (error) {
         throw new FileNotExists(filename)
-    }
+    }    
     // analyze config and use results as flags
     const isConfig = validateConfig(config)
     const isMultiConfig = validateMultiConfig(config)

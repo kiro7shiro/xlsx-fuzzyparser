@@ -1,7 +1,7 @@
 const assert = require('assert')
 const path = require('path')
 const ExcelJS = require('exceljs')
-const { loadIndex, getWorksheetData } = require('../src/files.js')
+const { loadIndex, saveIndex, getWorksheetData } = require('../src/files.js')
 
 describe('files', function () {
     const testFile = path.resolve(__dirname, './data/test-file.xlsx')
@@ -13,7 +13,6 @@ describe('files', function () {
             assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing should be loaded')
             // Simulate a file change by modifying the file
             const oldChange = index.Indexing.records[1]['$']['0']['v']
-            //console.log({ index: oldChange })
             const workbook = new ExcelJS.Workbook()
             await workbook.xlsx.readFile(testFile)
             let testSheet = workbook.getWorksheet('Indexing')
@@ -23,10 +22,20 @@ describe('files', function () {
             await workbook.xlsx.writeFile(testFile)
             const index2 = await loadIndex(testFile)
             const newChange = index2.Indexing.records[1]['$']['0']['v']
-            //console.log({ index2: newChange })
             assert.ok(oldChange !== newChange)
         })
-        it('saveIndex')
+        it('saveIndex', async function () {
+            const indexFile = path.resolve(__dirname, './data/test-file-index.json')
+            const index = await saveIndex(indexFile)
+            assert.ok(index, 'Initial index should be loaded')
+            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing should be loaded')
+        })
+        it('load *.json index', async function () {
+            const indexFile = path.resolve(__dirname, './data/test-file-index.json')
+            const index = await loadIndex(indexFile)
+            assert.ok(index, 'Initial index should be loaded')
+            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing should be loaded')
+        })
     })
     describe('getWorksheetData', function () {
         it('load cells', async function () {
@@ -62,7 +71,7 @@ describe('files', function () {
             ) */
             assert.strictEqual(data.length, 16, `data should have 16 items but got:${data.length}`)
             assert.strictEqual(data[0].text, 'Column1 Merge1', `data[0] should have text "Column1 Merge1" but got:${data[0].text}`)
-            assert.strictEqual(data[2].text, 'Column3 Merge2', `data[2] should have text "Column2 Merge2" but got:${data[0].text}`)
+            assert.strictEqual(data[2].text, 'Column3 Merge2', `data[2] should have text "Column2 Merge2" but got:${data[2].text}`)
         })
     })
 })
