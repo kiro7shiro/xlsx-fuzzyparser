@@ -240,7 +240,6 @@ describe('analyze', function () {
         })
     })
     describe('MultiCellHeaders', async function () {
-        const testFile = path.resolve(__dirname, './data/test-file.xlsx')
         const multiConfig = require(path.resolve(__dirname, './data/test-list-multiCellHeaders-config.js'))
         it('NoErrors', async function () {
             const { NoErrors: config } = multiConfig

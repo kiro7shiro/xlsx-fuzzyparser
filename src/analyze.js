@@ -184,6 +184,9 @@ function adapt(config, errors) {
     return adaption
 }
 
+let workbook = null
+let workbookName = null
+
 /**
  * Analyze a *.xlsx file by a given configuration. Returning the differences as errors.
  * @param {String} filename a string containing path and filename for the workbook to be analyzed
@@ -220,18 +223,53 @@ async function analyze(
         await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
     } catch (error) {
         throw new FileNotExists(filename)
-    }    
+    }
+    // read the file
+    if (workbook === null || workbookName !== filename) {
+        if (workbook === null) workbook = new ExcelJS.Workbook()
+        try {
+            await workbook.xlsx.readFile(filename, {
+                ignoreNodes: [
+                    'sheetPr',
+                    'dimension',
+                    'sheetViews',
+                    'sheetFormatPr',
+                    //'cols',
+                    //'sheetData',
+                    'autoFilter',
+                    //'mergeCells',
+                    'rowBreaks',
+                    'hyperlinks',
+                    'pageMargins',
+                    'dataValidations',
+                    'pageSetup',
+                    'headerFooter',
+                    'printOptions',
+                    'picture',
+                    'drawing',
+                    'sheetProtection',
+                    'tableParts',
+                    'conditionalFormatting',
+                    'extLst'
+                ]
+            })
+            workbookName = filename
+        } catch (error) {
+            // early break out the switch statement, because we cannot read the file
+            errors.push(error)
+            return errors
+        }
+    }
     // analyze config and use results as flags
     const isConfig = validateConfig(config)
     const isMultiConfig = validateMultiConfig(config)
     // test the file based on the config by trying to access the data
-    const errors = []
+    let errors = []
     switch (true) {
         case !isConfig && !isMultiConfig:
             throw new ConfigInvalid([...validateConfig.errors, ...validateMultiConfig.errors])
         case isMultiConfig:
             // analyze a multi config
-            // TODO : optimize program flow and load workbook first before analyzing each config
             for (const key in config) {
                 const subConfig = config[key]
                 errors.push(...(await analyze(filename, subConfig)))
@@ -239,17 +277,8 @@ async function analyze(
             break
         case isConfig:
             // analyze a single config
-            // 1. read the file
-            const workbook = new ExcelJS.Workbook()
-            try {
-                await workbook.xlsx.readFile(filename)
-            } catch (error) {
-                // early break out the switch statement, because we cannot access the file
-                errors.push(error)
-                break
-            }
-            // 1.2 load index file
-            const fileIndex = await loadIndex(filename)
+            // 1. load index file
+            const fileIndex = await loadIndex(filename, { sheetKeys: sheetEngineOptions.keys, cellKeys: headEngineOptions.keys })
             // 2. check if sheet is present
             let sheetNamesIndex = null
             if (Object.hasOwn(fileIndex, 'sheetNamesIndex')) {
@@ -277,7 +306,7 @@ async function analyze(
             const descriptors = config.type === 'object' ? config.fields : config.columns
             // early break out the switch statement, if we cannot make any search
             if (descriptors.length === 0) break
-            // load sheet data and index
+            // load sheet data and sheet index
             const data = getWorksheetData(sheet)
             let sheetIndex = null
             if (Object.hasOwn(fileIndex, sheet.name)) {
