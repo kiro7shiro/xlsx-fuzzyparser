@@ -1,5 +1,4 @@
 const path = require('path')
-const { ImporterFactory } = require('xlsx-import/lib/ImporterFactory')
 const { adapt, validate, validateConfig, validateMultiConfig } = require('./analyze.js')
 
 class ParsingError extends Error {
@@ -9,86 +8,57 @@ class ParsingError extends Error {
         this.filename = filename
     }
 }
-class ConfigInvalid extends ParsingError {
-    constructor(filename, errors) {
-        super(filename, `cannot parse ${filename}, config is invalid.`)
-        this.name = 'ConfigInvalid'
-        this.errors = errors
-    }
-}
-class UnsupportedFileFormat extends ParsingError {
-    constructor(filename, ext) {
-        super(filename, `cannot parse ${filename} unsupported file format: *${ext}.`)
-        this.name = 'UnsupportedFileFormat'
-        this.ext = ext
-    }
-}
 
 class Errors {
     static ParsingError = ParsingError
-    static ConfigInvalid = ConfigInvalid
-    static UnsupportedFileFormat = UnsupportedFileFormat
 }
 
 /**
- * Parse a file into a data object. 
- * @param {String} filename Filename or an array of filenames saved as *.json file.
- * @param {Object} [options]
- * @param {Object} [options.config] Configuration for parsing excel files.
- * @returns {Object} parsed object, contains either the loaded data or information's about the parsing process
+ * Parse a *.xlsx file into a data object.
+ * @param {String} filename
+ * @param {Object} config
  */
-async function parse(filename, { config } = {}) {
-
-    const fileData = path.parse(path.resolve(filename))
-    let data = undefined
-
-    switch (fileData.ext) {
-        case '.js':
-        case '.json':
-            // parse an array or an object
-            const tempData = require(path.format(fileData))
-            if (Array.isArray(tempData)) {
-                data = []
-                for (let fCnt = 0; fCnt < tempData.length; fCnt++) {
-                    const fl = tempData[fCnt]
-                    data.push(await parse(fl, { config }))
-                }
-            } else {
-                data = tempData
-            }
-            break
-
-        case '.xlsx':
-        case '.xlsm':
-            // parse excel files
-            if (typeof config === 'string') config = await parse(config)
-            const isConfig = validateConfig(config)
-            const isMultiConfig = validateMultiConfig(config)
-            if (!isConfig && !isMultiConfig) {
-                throw new ConfigInvalid(filename, [...validateConfig.errors, ...validateMultiConfig.errors])
-            }
-            const errors = await validate(filename, config)
-            const adaption = errors.length ? adapt(config, errors) : Object.assign({}, config)
-            const factory = new ImporterFactory
-            const importer = await factory.from(path.format(fileData))
-            if (isMultiConfig) {
-                const tempData = {}
-                for (const key in adaption) {
-                    tempData[key] = importer.getAllItems(adaption[key])
-                }
-                data = tempData
-            } else {
-                data = importer.getAllItems(adaption)
-            }
-            break
-
-        default:
-            throw new UnsupportedFileFormat(filename, fileData.ext)
-
+async function parse(filename, config) {
+    // check file access
+    try {
+        await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
+    } catch (error) {
+        throw new FileNotExists(filename)
     }
-
-    return data
-
+    //
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.readFile(filename)
+    const result = {}
+    for (const key in config) {
+        const { worksheet: sheetName, type } = config[key]
+        console.log({ key, sheetName, type })
+        const worksheet = workbook.getWorksheet(sheetName)
+        if (!worksheet) throw new ParsingError(filename, `Sheet ${sheetName} does not exist.`)
+        if (type === 'object') {
+            result[key] = {}
+            for (const field of config[key].fields) {
+                result[key][field.key] = worksheet.getRow(field.row).getCell(field.col).value
+            }
+        } else if (type === 'list') {
+            result[key] = []
+            const columns = config[key].columns
+            const rowOffset = config[key].rowOffset
+            const colOffset = columns[0].index
+            const headers = worksheet.getRow(rowOffset).values
+            console.log({ rowOffset, colOffset })
+            console.log(headers)
+            const rows = worksheet.getRows(rowOffset + 1, columns.length)
+            for (const row of rows) {
+                console.log(row.values)
+                const item = {}
+                for (let index = colOffset; index < headers.length; index++) {
+                    item[headers[index]] = row.getCell(index).value
+                }
+                result[key].push(item)
+            }
+        }
+    }
+    return result
 }
 
 module.exports = { parse, Errors }

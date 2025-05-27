@@ -2,7 +2,7 @@ const fs = require('fs').promises
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
-const { validateColumns, validateFields, validateConfig, validateMultiConfig } = require('./config.js')
+const { validateConfig, validateMultiConfig } = require('./config.js')
 const { loadIndex, getWorksheetData } = require('./files.js')
 
 class AnalysationError extends Error {
@@ -11,13 +11,6 @@ class AnalysationError extends Error {
         this.name = 'AnalysationError'
         this.filename = filename
         this.worksheet = worksheet
-    }
-}
-class ParsingError extends Error {
-    constructor(filename, message) {
-        super(message)
-        this.name = 'ParsingError'
-        this.filename = filename
     }
 }
 
@@ -106,7 +99,6 @@ class InvalidData extends AnalysationError {
 
 class Errors {
     static AnalysationError = AnalysationError
-    static ParsingError = ParsingError
     static FileNotExists = FileNotExists
     static ConfigInvalid = ConfigInvalid
     static SheetMissing = SheetMissing
@@ -117,71 +109,6 @@ class Errors {
     static MissingDataHeader = MissingDataHeader
     static DataHeaderNotInConfig = DataHeaderNotInConfig
     static InvalidData = InvalidData
-}
-
-/**
- * Adapt a configuration to an invalid configured file
- * @param {Object} config to adapt to the file
- * @param {Array} errors to change the configuration
- * @returns {Object} a new object with the changed parameters
- */
-function adapt(config, errors) {
-    const adaption = Object.assign({}, config)
-    // validate config and use the results as flags
-    const isColumns = validateColumns(config)
-    const isFields = validateFields(config)
-    const isConfig = validateConfig(config)
-    const isMultiConfig = validateMultiConfig(config)
-    switch (true) {
-        case !isColumns && !isFields && !isConfig && !isMultiConfig:
-            // configuration error
-            throw new ConfigInvalid([...validateColumns.errors, ...validateFields.errors, ...validateConfig.errors, ...validateMultiConfig.errors])
-
-        case !isColumns && !isFields && !isConfig:
-            // adapt a multi config
-            for (const key in adaption) {
-                const subConfig = adaption[key]
-                const noSheet = errors.find(function (error) {
-                    return error.name === 'SheetMissing' && error.worksheet === subConfig.worksheet
-                })
-                if (noSheet) {
-                    delete adaption[key]
-                } else {
-                    adaption[key] = adapt(subConfig, errors)
-                }
-            }
-            break
-
-        case !isColumns && !isFields:
-            // adapt a single config
-            const invalidName = errors.find(function (error) {
-                return error.name === 'InconsistentSheetName' && error.worksheet === config.worksheet
-            })
-            if (invalidName) adaption.worksheet = invalidName.actual
-            const invalidRowOffset = errors.find(function (error) {
-                return error.name === 'IncorrectRowOffset' && error.worksheet === adaption.worksheet
-            })
-            if (invalidRowOffset) adaption.rowOffset = invalidRowOffset.actual
-            if (adaption.columns) {
-                // adapt columns
-                for (let cCnt = 0; cCnt < adaption.columns.length; cCnt++) {
-                    const column = adaption.columns[cCnt]
-                    const invalidColIndex = errors.find(function (error) {
-                        return error.name === 'IncorrectColumnIndex' && error.key === column.key
-                    })
-                    if (invalidColIndex) column.index = invalidColIndex.actual
-                }
-                // TODO : missing data headers
-                const missingDataHeaders = errors.filter(function (error) {
-                    return error.name === 'MissingDataHeader'
-                })
-            } else {
-            }
-            // TODO : strategy for adapting empty values? set to zero or null string
-            break
-    }
-
-    return adaption
 }
 
 let workbook = null
@@ -268,6 +195,7 @@ async function analyze(
     switch (true) {
         case !isConfig && !isMultiConfig:
             throw new ConfigInvalid([...validateConfig.errors, ...validateMultiConfig.errors])
+
         case isMultiConfig:
             // analyze a multi config
             for (const key in config) {
@@ -367,64 +295,7 @@ async function analyze(
     return errors
 }
 
-/**
- * Parse a *.xlsx file into a data object.
- * @param {String} filename
- * @param {Object} config
- */
-async function parse(filename, config) {
-    // check file access
-    try {
-        await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
-    } catch (error) {
-        throw new FileNotExists(filename)
-    }
-    //
-    const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.readFile(filename)
-    const result = {}
-    for (const key in config) {
-        const { worksheet: sheetName, type } = config[key]
-        console.log({ key, sheetName, type })
-        const worksheet = workbook.getWorksheet(sheetName)
-        if (!worksheet) throw new ParsingError(filename, `Sheet ${sheetName} does not exist.`)
-        if (type === 'object') {
-            result[key] = {}
-            for (const field of config[key].fields) {
-                result[key][field.key] = worksheet.getRow(field.row).getCell(field.col).value
-            }
-        } else if (type === 'list') {
-            result[key] = []
-            const columns = config[key].columns
-            const rowOffset = config[key].rowOffset
-            const colOffset = columns[0].index
-            const headers = worksheet.getRow(rowOffset).values
-            console.log({ rowOffset, colOffset })
-            console.log(headers)
-            const rows = worksheet.getRows(rowOffset + 1, columns.length)
-            for (const row of rows) {
-                console.log(row.values)
-                const item = {}
-                for (let index = colOffset; index < headers.length; index++) {
-                    item[headers[index]] = row.getCell(index).value
-                }
-                result[key].push(item)
-            }
-        }
-    }
-    return result
-}
-
-/**
- * Validate a *.xlsx files data against a configuration. Returning invalid data points.
- * @param {String} filename
- * @param {Object} config
- */
-function validate(filename, config) {}
-
 module.exports = {
-    adapt,
     analyze,
-    parse,
     Errors
 }

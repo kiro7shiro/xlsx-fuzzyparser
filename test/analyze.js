@@ -1,6 +1,6 @@
 const assert = require('assert')
 const path = require('path')
-const { analyze, Errors } = require('../src/analyze.js')
+const { analyze, Errors } = require('../index.js')
 
 describe('analyze', function () {
     const testFile = path.resolve(__dirname, './data/test-file.xlsx')
