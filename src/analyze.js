@@ -30,9 +30,10 @@ class ConfigInvalid extends AnalysationError {
 }
 
 class SheetMissing extends AnalysationError {
-    constructor(filename, worksheet) {
-        super(filename, worksheet, `Worksheet: '${worksheet}' is missing.`)
+    constructor(filename, sheetName) {
+        super(filename, sheetName, `Worksheet: '${sheetName}' is missing.`)
         this.name = 'SheetMissing'
+        this.sheetName = sheetName
     }
 }
 
