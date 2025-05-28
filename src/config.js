@@ -1,4 +1,6 @@
 // TODO : redefine schema to add headers
+// TODO : rename worksheet to sheetName
+// TODO : rename rowOffset to row
 const Ajv = require("ajv")
 
 const columnsSchema = {
