@@ -1,6 +1,6 @@
 // TODO : redefine schema to add headers
+// TODO : rename col to column in headers
 // TODO : rename worksheet to sheetName
-// TODO : rename rowOffset to row
 const Ajv = require("ajv")
 
 const columnsSchema = {
@@ -38,7 +38,7 @@ const configSchema = {
     properties: {
         type: { type: 'string', pattern: 'list\\b|object\\b' },
         worksheet: { type: 'string', minLength: 1 },
-        rowOffset: { type: 'integer' },
+        row: { type: 'integer' },
         columns: { $ref: 'columns' },
         fields: { $ref: 'fields' }
     },

@@ -7,7 +7,7 @@ const testConfig = {
     TestList: {
         worksheet: 'TestList',
         type: 'list',
-        rowOffset: 4,
+        row: 4,
         columns: [
             { index: 2, key: 'col-one', header: 'one' },
             { index: 3, key: 'col-two', header: 'two' },

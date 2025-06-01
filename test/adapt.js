@@ -70,7 +70,7 @@ describe('adapt', function () {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                assert.strictEqual(header.row, error.index)
+                assert.strictEqual(header.row, error.row)
             }
         })
         it('IncorrectColumnIndex', async function () {
@@ -86,7 +86,7 @@ describe('adapt', function () {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                assert.strictEqual(header.col, error.index)
+                assert.strictEqual(header.col, error.column)
             }
         })
     })
@@ -132,7 +132,7 @@ describe('adapt', function () {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                assert.strictEqual(header.row, error.index)
+                assert.strictEqual(header.row, error.row)
             }
         })
         it('IncorrectColumnIndex', async function () {
@@ -148,7 +148,7 @@ describe('adapt', function () {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                assert.strictEqual(header.col, error.index)
+                assert.strictEqual(header.col, error.column)
             }
         })
     })
@@ -194,7 +194,7 @@ describe('adapt', function () {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                assert.strictEqual(header.row, error.index)
+                assert.strictEqual(header.row, error.row)
             }
         })
         it('IncorrectColumnIndex', async function () {
@@ -210,7 +210,7 @@ describe('adapt', function () {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                assert.strictEqual(header.col, error.index)
+                assert.strictEqual(header.col, error.column)
             }
         })
     })

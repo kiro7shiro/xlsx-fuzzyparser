@@ -5,13 +5,11 @@ const Fuse = require('fuse.js')
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { loadIndex, getWorksheetData } = require('./files.js')
 
-// TODO : remove name property from all errors
 // TODO : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
 // TODO : support for horizontal lists ???
 class AnalysationError extends Error {
     constructor(filename, worksheet, message) {
         super(message)
-        this.name = 'AnalysationError'
         this.filename = filename
         this.worksheet = worksheet
     }
@@ -20,14 +18,12 @@ class AnalysationError extends Error {
 class FileNotExists extends Error {
     constructor(filename) {
         super(`File: '${filename}' doesn't exists.`)
-        this.name = 'FileNotExists'
     }
 }
 
 class ConfigInvalid extends AnalysationError {
     constructor(errors, { worksheet = '', filename = '' } = {}) {
         super(filename, worksheet, 'Config is invalid.')
-        this.name = 'ConfigInvalid'
         this.errors = errors
     }
 }
@@ -35,7 +31,6 @@ class ConfigInvalid extends AnalysationError {
 class SheetMissing extends AnalysationError {
     constructor(filename, sheetName) {
         super(filename, sheetName, `Worksheet: '${sheetName}' is missing.`)
-        this.name = 'SheetMissing'
         this.sheetName = sheetName
     }
 }
@@ -43,49 +38,39 @@ class SheetMissing extends AnalysationError {
 class InconsistentSheetName extends AnalysationError {
     constructor(filename, sheetName, config) {
         super(filename, config.worksheet, `Worksheet: '${config.worksheet}' is present but named inconsistent.`)
-        this.name = 'InconsistentSheetName'
-        this.key = 'worksheet'
         this.sheetName = sheetName
     }
 }
 
 class InconsistentHeaderName extends AnalysationError {
     constructor(filename, worksheet, key, header, index) {
-        // TODO : rename header to text
         super(filename, worksheet, `Worksheet: '${worksheet}' data header for: '${key}' is present but named inconsistent.`)
-        this.name = 'InconsistentHeaderName'
         this.key = key
         this.header = header
         this.index = index
     }
 }
 class IncorrectColumnIndex extends AnalysationError {
-    constructor(filename, worksheet, key, index, header) {
-        // TODO : rename index to column
-        super(filename, worksheet, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${index}.`)
-        this.name = 'IncorrectColumnIndex'
+    constructor(filename, worksheet, key, column, header) {
+        super(filename, worksheet, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${column}.`)
         this.key = key
-        this.index = index
+        this.column = column
         this.header = header
     }
 }
 
 class IncorrectRowIndex extends AnalysationError {
-    constructor(filename, worksheet, key, index, header) {
-        // TODO : rename index to row
-        super(filename, worksheet, `Worksheet: '${worksheet}' row index: '${key}' seems to be: ${index}.`)
-        this.name = 'IncorrectRowIndex'
+    constructor(filename, worksheet, key, row, header) {
+        super(filename, worksheet, `Worksheet: '${worksheet}' row index: '${key}' seems to be: ${row}.`)
         this.key = key
-        this.index = index
+        this.row = row
         this.header = header
     }
 }
 
 class MissingDataHeader extends AnalysationError {
     constructor(filename, worksheet, key, header, index) {
-        // TODO : rename header to text
         super(filename, worksheet, `Worksheet: '${worksheet}' data header for: '${key}' is missing.`)
-        this.name = 'MissingDataHeader'
         this.key = key
         this.header = header
         this.index = index
@@ -95,7 +80,6 @@ class MissingDataHeader extends AnalysationError {
 class DataHeaderNotInConfig extends AnalysationError {
     constructor(filename, worksheet, header, index) {
         super(filename, worksheet, `Worksheet: '${worksheet}' data header: '${header.replace('\n', '\\n')}' not in config.`)
-        this.name = 'DataHeaderNotInConfig'
         this.header = header
         this.index = index
     }
@@ -104,7 +88,6 @@ class DataHeaderNotInConfig extends AnalysationError {
 class InvalidData extends AnalysationError {
     constructor(filename, worksheet, key) {
         super(filename, worksheet, `Worksheet: '${worksheet}' key: '${key}' contains invalid data.`)
-        this.name = 'InvalidData'
         this.key = key
     }
 }
@@ -301,9 +284,13 @@ async function analyze(
                     if (result.score >= inconsistentScore)
                         errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text, result.index))
                     if (result.rowError !== 0)
-                        errors.push(new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index))
+                        errors.push(
+                            new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
+                        )
                     if (result.colError !== 0)
-                        errors.push(new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index))
+                        errors.push(
+                            new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
+                        )
                 }
             }
             break

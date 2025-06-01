@@ -42,16 +42,16 @@ async function parse(filename, config) {
         } else if (type === 'list') {
             result[key] = []
             const columns = config[key].columns
-            const rowOffset = config[key].rowOffset
-            const colOffset = columns[0].index
-            const headers = worksheet.getRow(rowOffset).values
-            console.log({ rowOffset, colOffset })
+            const row = config[key].row
+            const column = columns[0].index
+            const headers = worksheet.getRow(row).values
+            console.log({ row, column })
             console.log(headers)
-            const rows = worksheet.getRows(rowOffset + 1, columns.length)
+            const rows = worksheet.getRows(row + 1, columns.length)
             for (const row of rows) {
                 console.log(row.values)
                 const item = {}
-                for (let index = colOffset; index < headers.length; index++) {
+                for (let index = column; index < headers.length; index++) {
                     item[headers[index]] = row.getCell(index).value
                 }
                 result[key].push(item)

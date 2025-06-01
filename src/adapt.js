@@ -93,9 +93,9 @@ function adapt(config, errors) {
                 })
                 const header = descriptor.header[error.header]
                 if (error instanceof AnalysationErrors.IncorrectRowIndex) {
-                    header.row = error.index
+                    header.row = error.row
                 } else {
-                    header.col = error.index
+                    header.col = error.column
                 }
             }
     }

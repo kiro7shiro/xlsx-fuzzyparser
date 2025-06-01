@@ -101,9 +101,9 @@ describe('analyze', function () {
                 error3 instanceof Errors.IncorrectRowIndex,
                 `Expected error to be an instance of 'IncorrectRowIndex' but got: '${error1.constructor.name}'`
             )
-            assert.ok(error1.index === 26, `Expected error1.index equal to: 26 but got: '${error1.index}'`)
-            assert.ok(error2.index === 26, `Expected error2.index equal to: 26 but got: '${error2.index}'`)
-            assert.ok(error3.index === 26, `Expected error3.index equal to: 26 but got: '${error3.index}'`)
+            assert.ok(error1.row === 26, `Expected error1.row equal to: 26 but got: '${error1.row}'`)
+            assert.ok(error2.row === 26, `Expected error2.row equal to: 26 but got: '${error2.row}'`)
+            assert.ok(error3.row === 26, `Expected error3.row equal to: 26 but got: '${error3.row}'`)
         })
         it('IncorrectColumnIndex', async function () {
             const { IncorrectColumnIndex: config } = listConfig
@@ -122,9 +122,9 @@ describe('analyze', function () {
                 error3 instanceof Errors.IncorrectColumnIndex,
                 `Expected error to be an instance of 'IncorrectColumnIndex' but got: '${error3.constructor.name}'`
             )
-            assert.ok(error1.index === 5, `Expected error1.index equal to: 5 but got: '${error1.index}'`)
-            assert.ok(error2.index === 6, `Expected error2.index equal to: 6 but got: '${error2.index}'`)
-            assert.ok(error3.index === 7, `Expected error3.index equal to: 7 but got: '${error3.index}'`)
+            assert.ok(error1.column === 5, `Expected error1.column equal to: 5 but got: '${error1.column}'`)
+            assert.ok(error2.column === 6, `Expected error2.column equal to: 6 but got: '${error2.column}'`)
+            assert.ok(error3.column === 7, `Expected error3.column equal to: 7 but got: '${error3.column}'`)
         })
     })
     describe('object', function () {
@@ -208,10 +208,10 @@ describe('analyze', function () {
                 error4 instanceof Errors.IncorrectRowIndex,
                 `Expected error to be an instance of 'IncorrectRowIndex' but got: '${error4.constructor.name}'`
             )
-            assert.ok(error1.index === 24, `Expected error1.index equal to: 24 but got: '${error1.index}'`)
-            assert.ok(error2.index === 23, `Expected error2.index equal to: 23 but got: '${error2.index}'`)
-            assert.ok(error3.index === 24, `Expected error3.index equal to: 24 but got: '${error3.index}'`)
-            assert.ok(error4.index === 25, `Expected error4.index equal to: 25 but got: '${error4.index}'`)
+            assert.ok(error1.row === 24, `Expected error1.row equal to: 24 but got: '${error1.row}'`)
+            assert.ok(error2.row === 23, `Expected error2.row equal to: 23 but got: '${error2.row}'`)
+            assert.ok(error3.row === 24, `Expected error3.row equal to: 24 but got: '${error3.row}'`)
+            assert.ok(error4.row === 25, `Expected error4.row equal to: 25 but got: '${error4.row}'`)
         })
         it('IncorrectColumnIndex', async function () {
             const { IncorrectColumnIndex: config } = objectConfig
@@ -234,10 +234,10 @@ describe('analyze', function () {
                 error4 instanceof Errors.IncorrectColumnIndex,
                 `Expected error to be an instance of 'IncorrectColumnIndex' but got: '${error4.constructor.name}'`
             )
-            assert.ok(error1.index === 3, `Expected error1.index equal to: 3 but got: '${error1.index}'`)
-            assert.ok(error2.index === 5, `Expected error2.index equal to: 5 but got: '${error2.index}'`)
-            assert.ok(error3.index === 7, `Expected error3.index equal to: 7 but got: '${error3.index}'`)
-            assert.ok(error4.index === 8, `Expected error4.index equal to: 8 but got: '${error4.index}'`)
+            assert.ok(error1.column === 3, `Expected error1.column equal to: 3 but got: '${error1.column}'`)
+            assert.ok(error2.column === 5, `Expected error2.column equal to: 5 but got: '${error2.column}'`)
+            assert.ok(error3.column === 7, `Expected error3.column equal to: 7 but got: '${error3.column}'`)
+            assert.ok(error4.column === 8, `Expected error4.column equal to: 8 but got: '${error4.column}'`)
         })
     })
     describe('MultiCellHeaders', async function () {
@@ -325,11 +325,11 @@ describe('analyze', function () {
                 error5 instanceof Errors.IncorrectRowIndex,
                 `Expected error to be an instance of 'IncorrectRowIndex' but got: '${error5.constructor.name}'`
             )
-            assert.ok(error1.index === 67, `Expected error1.index equal to: 67 but got: '${error1.index}'`)
-            assert.ok(error2.index === 66, `Expected error2.index equal to: 66 but got: '${error2.index}'`)
-            assert.ok(error3.index === 67, `Expected error3.index equal to: 67 but got: '${error3.index}'`)
-            assert.ok(error4.index === 67, `Expected error4.index equal to: 67 but got: '${error4.index}'`)
-            assert.ok(error5.index === 67, `Expected error5.index equal to: 67 but got: '${error5.index}'`)
+            assert.ok(error1.row === 67, `Expected error1.row equal to: 67 but got: '${error1.row}'`)
+            assert.ok(error2.row === 66, `Expected error2.row equal to: 66 but got: '${error2.row}'`)
+            assert.ok(error3.row === 67, `Expected error3.row equal to: 67 but got: '${error3.row}'`)
+            assert.ok(error4.row === 67, `Expected error4.row equal to: 67 but got: '${error4.row}'`)
+            assert.ok(error5.row === 67, `Expected error5.row equal to: 67 but got: '${error5.row}'`)
         })
         it('IncorrectColumnIndex', async function () {
             const { IncorrectColumnIndex: config } = multiConfig
@@ -356,11 +356,11 @@ describe('analyze', function () {
                 error5 instanceof Errors.IncorrectColumnIndex,
                 `Expected error to be an instance of 'IncorrectColumnIndex' but got: '${error5.constructor.name}'`
             )
-            assert.ok(error1.index === 6, `Expected error1.index equal to: 6 but got: '${error1.index}'`)
-            assert.ok(error2.index === 7, `Expected error2.index equal to: 7 but got: '${error2.index}'`)
-            assert.ok(error3.index === 7, `Expected error3.index equal to: 7 but got: '${error3.index}'`)
-            assert.ok(error4.index === 8, `Expected error4.index equal to: 8 but got: '${error4.index}'`)
-            assert.ok(error5.index === 9, `Expected error5.index equal to: 9 but got: '${error5.index}'`)
+            assert.ok(error1.column === 6, `Expected error1.column equal to: 6 but got: '${error1.column}'`)
+            assert.ok(error2.column === 7, `Expected error2.column equal to: 7 but got: '${error2.column}'`)
+            assert.ok(error3.column === 7, `Expected error3.column equal to: 7 but got: '${error3.column}'`)
+            assert.ok(error4.column === 8, `Expected error4.column equal to: 8 but got: '${error4.column}'`)
+            assert.ok(error5.column === 9, `Expected error5.column equal to: 9 but got: '${error5.column}'`)
         })
     })
 })

@@ -2,7 +2,7 @@ module.exports = {
     NoErrors: {
         worksheet: 'TestList',
         type: 'list',
-        rowOffset: 40,
+        row: 40,
         columns: [
             {
                 index: 2,
@@ -30,7 +30,7 @@ module.exports = {
     InconsistentHeaderName: {
         worksheet: 'TestList',
         type: 'list',
-        rowOffset: 50,
+        row: 50,
         columns: [
             {
                 index: 2,
@@ -58,7 +58,7 @@ module.exports = {
     MissingDataHeader: {
         worksheet: 'TestList',
         type: 'list',
-        rowOffset: 58,
+        row: 58,
         columns: [
             {
                 index: 2,
@@ -83,7 +83,7 @@ module.exports = {
     IncorrectRowIndex: {
         worksheet: 'TestList',
         type: 'list',
-        rowOffset: 66,
+        row: 66,
         columns: [
             {
                 index: 2,
@@ -111,7 +111,7 @@ module.exports = {
     IncorrectColumnIndex: {
         worksheet: 'TestList',
         type: 'list',
-        rowOffset: 76,
+        row: 76,
         columns: [
             {
                 index: 2,
