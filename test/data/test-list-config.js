@@ -1,5 +1,5 @@
 // TODO : rename rowOffset into row
-// TODO : rename index into col
+// TODO : rename index into column
 module.exports = {
     NoErrors: {
         worksheet: 'TestList',

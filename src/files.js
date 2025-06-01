@@ -116,8 +116,9 @@ async function loadIndex(filename, { sheetKeys = ['name'], cellKeys = ['text'] }
             index[key] = Fuse.parseIndex(item)
         }
         return index
+    } else {
+        index = await saveIndex(filename, { cellKeys })
     }
-    index = await saveIndex(filename, { cellKeys })
     return index
 }
 

@@ -5,6 +5,9 @@ const Fuse = require('fuse.js')
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { loadIndex, getWorksheetData } = require('./files.js')
 
+// TODO : remove name property from all errors
+// TODO : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
+// TODO : support for horizontal lists ???
 class AnalysationError extends Error {
     constructor(filename, worksheet, message) {
         super(message)
@@ -47,37 +50,45 @@ class InconsistentSheetName extends AnalysationError {
 }
 
 class InconsistentHeaderName extends AnalysationError {
-    constructor(filename, worksheet, key, header) {
+    constructor(filename, worksheet, key, header, index) {
+        // TODO : rename header to text
         super(filename, worksheet, `Worksheet: '${worksheet}' data header for: '${key}' is present but named inconsistent.`)
         this.name = 'InconsistentHeaderName'
         this.key = key
         this.header = header
+        this.index = index
     }
 }
 class IncorrectColumnIndex extends AnalysationError {
-    constructor(filename, worksheet, key, index) {
+    constructor(filename, worksheet, key, index, header) {
+        // TODO : rename index to column
         super(filename, worksheet, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${index}.`)
         this.name = 'IncorrectColumnIndex'
         this.key = key
         this.index = index
+        this.header = header
     }
 }
 
 class IncorrectRowIndex extends AnalysationError {
-    constructor(filename, worksheet, key, index) {
+    constructor(filename, worksheet, key, index, header) {
+        // TODO : rename index to row
         super(filename, worksheet, `Worksheet: '${worksheet}' row index: '${key}' seems to be: ${index}.`)
         this.name = 'IncorrectRowIndex'
         this.key = key
         this.index = index
+        this.header = header
     }
 }
 
 class MissingDataHeader extends AnalysationError {
-    constructor(filename, worksheet, key, header) {
+    constructor(filename, worksheet, key, header, index) {
+        // TODO : rename header to text
         super(filename, worksheet, `Worksheet: '${worksheet}' data header for: '${key}' is missing.`)
         this.name = 'MissingDataHeader'
         this.key = key
         this.header = header
+        this.index = index
     }
 }
 
@@ -271,24 +282,28 @@ async function analyze(
                             return 0
                         })
                     if (matches.length === 0) {
-                        errors.push(new MissingDataHeader(filename, sheet.name, descriptor.key, header.text))
+                        // TODO : check if a data value is present
+                        errors.push(new MissingDataHeader(filename, sheet.name, descriptor.key, header.text, headerIndex))
                         continue
                     }
-                    ///console.table(matches)
+                    //console.table(matches)
                     // pick the first match as result
-                    results.push(matches[0])
+                    const result = matches[0]
+                    result.index = headerIndex
+                    results.push(result)
                 }
                 //console.table(results)
-                // TODO : if config.type === list check if columns are in line
-                // TODO : check if multi cell headers are in line vertical or horizontal
+                // TODO : if config.type === list check if columns are in a straight line horizontally or vertically
+                // TODO : check if multi cell headers are in line horizontally or vertically
                 // TODO : add a header identifier to row and col errors
                 for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
                     const result = results[resultIndex]
-                    if (result.score >= inconsistentScore) errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text))
+                    if (result.score >= inconsistentScore)
+                        errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text, result.index))
                     if (result.rowError !== 0)
-                        errors.push(new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError))
+                        errors.push(new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index))
                     if (result.colError !== 0)
-                        errors.push(new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError))
+                        errors.push(new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index))
                 }
             }
             break
