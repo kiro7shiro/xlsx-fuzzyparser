@@ -23,7 +23,7 @@ function adapt(config, errors) {
             for (const key in adaption) {
                 const subConfig = adaption[key]
                 const noSheet = errors.find(function (error) {
-                    return error instanceof AnalysationErrors.SheetMissing && error.sheetName === subConfig.worksheet
+                    return error instanceof AnalysationErrors.SheetMissing && error.worksheet === subConfig.worksheet
                 })
                 if (noSheet) {
                     delete adaption[key]
@@ -36,10 +36,10 @@ function adapt(config, errors) {
         case isConfig:
             // adapt a single config
             // sheet
-            const inconsistentName = errors.find(function (error) {
+            const inconsistentSheet = errors.find(function (error) {
                 return error instanceof AnalysationErrors.InconsistentSheetName && error.worksheet === config.worksheet
             })
-            if (inconsistentName) adaption.worksheet = inconsistentName.sheetName
+            if (inconsistentSheet) adaption.worksheet = inconsistentSheet.inconsistentName
             // inconsistent headers
             const descriptors = adaption.type === 'object' ? adaption.fields : adaption.columns
             const inconsistentHeader = errors.filter(function (error) {
