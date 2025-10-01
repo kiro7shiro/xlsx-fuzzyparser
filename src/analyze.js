@@ -7,16 +7,17 @@ const { loadIndex, getWorksheetData } = require('./files.js')
 
 // TODO : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
 // TODO : support for horizontal lists ???
-class AnalysationError extends Error {
-    constructor(filename, message) {
-        super(message)
-        this.filename = filename
-    }
-}
 
 class FileNotExists extends Error {
     constructor(filename) {
         super(`File: '${filename}' doesn't exists.`)
+    }
+}
+
+class AnalysationError {
+    constructor(filename, message) {
+        this.filename = filename
+        this.message = message
     }
 }
 
@@ -50,6 +51,25 @@ class InconsistentHeaderName extends AnalysationError {
         this.index = index
     }
 }
+
+class IncorrectHeaderRow extends AnalysationError {
+    constructor(filename, worksheet, key, row, header) {
+        super(filename, `Worksheet: '${worksheet}' header row for '${key}' seems to be: ${row}.`)
+        this.key = key
+        this.row = row
+        this.header = header
+    }
+}
+
+class IncorrectHeaderColumn extends AnalysationError {
+    constructor(filename, worksheet, key, column, header) {
+        super(filename, `Worksheet: '${worksheet}' header column for '${header}' seems to be: ${column}.`)
+        this.key = key
+        this.column = column
+        this.header = header
+    }
+}
+
 class IncorrectColumnIndex extends AnalysationError {
     constructor(filename, worksheet, key, column, header) {
         super(filename, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${column}.`)
@@ -77,9 +97,9 @@ class MissingDataHeader extends AnalysationError {
     }
 }
 
-class InvalidData extends AnalysationError {
+class EmptyDataCell extends AnalysationError {
     constructor(filename, worksheet, key) {
-        super(filename, `Worksheet: '${worksheet}' key: '${key}' contains invalid data.`)
+        super(filename, `Worksheet: '${worksheet}' data cell for: '${key}' is empty.`)
         this.key = key
     }
 }
@@ -89,12 +109,14 @@ class Errors {
     static FileNotExists = FileNotExists
     static ConfigInvalid = ConfigInvalid
     static SheetMissing = SheetMissing
-    static InconsistentHeaderName = InconsistentHeaderName
     static InconsistentSheetName = InconsistentSheetName
+    static InconsistentHeaderName = InconsistentHeaderName
+    static IncorrectHeaderColumn = IncorrectHeaderColumn
+    static IncorrectHeaderRow = IncorrectHeaderRow
     static IncorrectColumnIndex = IncorrectColumnIndex
     static IncorrectRowIndex = IncorrectRowIndex
     static MissingDataHeader = MissingDataHeader
-    static InvalidData = InvalidData
+    static EmptyDataCell = EmptyDataCell
 }
 
 let workbook = null
@@ -267,9 +289,8 @@ async function analyze(
                     results.push(result)
                 }
                 //console.table(results)
-                // TODO : if config.type === list check if columns are in a straight line horizontally or vertically
+                // TODO : if config.type === list check if columns are in a straight line horizontally( or vertically)
                 // TODO : check if multi cell headers are in line horizontally or vertically
-                // TODO : add a header identifier to row and col errors
                 for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
                     const result = results[resultIndex]
                     if (result.score >= inconsistentScore)
@@ -283,7 +304,46 @@ async function analyze(
                             new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
                         )
                 }
+                // TODO : this belongs to part 5.
+                // 4.1 search descriptor value
+                // 4.2 get position
+                let valueRow = config.type === 'object' ? descriptor.row : config.row
+                let valueColumn = config.type === 'object' ? descriptor.col : descriptor.index
+                let cell = sheet.getRow(valueRow).getCell(valueColumn)
+                // 4.3 calc alternate positions if possible
+                const incorrectIndex = errors.filter(function (error) {
+                    return (error instanceof IncorrectRowIndex || error instanceof IncorrectColumnIndex) && error.key === descriptor.key
+                })
+
+                // 4.4 check the value
+                if (incorrectIndex.length < 1) {
+                    if (cell.type === ExcelJS.ValueType.Null) {
+                        errors.push(new EmptyDataCell(filename, sheet.name, descriptor.key))
+                    }
+                    // valid data cell that contains some data we do not know jet, do nothing
+                } else {
+                    //console.group(descriptor.key)
+                    for (let eCnt = 0; eCnt < incorrectIndex.length; eCnt++) {
+                        const error = incorrectIndex[eCnt]
+                        const header = descriptor.header[error.header]
+                        header.relativeRow = valueRow - header.row
+                        header.relativeColumn = valueColumn - header.col
+                        header.rowOffset = error instanceof IncorrectRowIndex ? error.row - header.row : 0
+                        header.columnOffset = error instanceof IncorrectColumnIndex ? error.column - header.col : 0
+                        header.alternateRow = header.row + header.rowOffset + header.relativeRow
+                        header.alternateColumn = header.col + header.columnOffset + header.relativeColumn
+                        //console.log({ valueRow, valueColumn })
+                        //console.log(header)
+                    }
+                    // all alternate positions of one descriptors header should point to the same cell
+                    //console.groupEnd()
+                }
             }
+            // 5. search value cell
+            // 5.1 get value cell position from config
+            // 5.2 calc alternate positions if incorrect headers row or column indices are present
+            // 5.3 check positions
+
             break
     }
     return errors
