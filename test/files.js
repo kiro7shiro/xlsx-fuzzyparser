@@ -1,12 +1,16 @@
 const assert = require('assert')
 const path = require('path')
 const ExcelJS = require('exceljs')
-const { loadIndex, saveIndex, getWorksheetData } = require('../src/files.js')
+const { loadIndex, saveIndex, getWorksheetData, getWorkbook } = require('../src/files.js')
 
 describe('files', function () {
     const testFile = path.resolve(__dirname, './data/test-file.xlsx')
     describe('caching', function () {
-        it('getWorkbook')
+        it('getWorkbook', async function () {
+            const workbook = await getWorkbook(testFile)
+            assert.ok(workbook instanceof ExcelJS.Workbook, 'Workbook should be an instance of ExcelJS.Workbook.')
+            // TODO : implement more checks for the resulting workbook
+        })
     })
     describe('indexing', function () {
         it('loadIndex', async function () {
