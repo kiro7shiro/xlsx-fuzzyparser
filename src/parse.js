@@ -1,3 +1,7 @@
+/**
+ * Module for parsing data from an excel file.
+ */
+
 const path = require('path')
 const { adapt, validate, validateConfig, validateMultiConfig } = require('./analyze.js')
 

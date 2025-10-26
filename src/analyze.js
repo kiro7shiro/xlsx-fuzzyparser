@@ -1,3 +1,7 @@
+/**
+ * Module for analyzing excel files against a config.
+ */
+
 const fs = require('fs').promises
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
@@ -104,6 +108,7 @@ class EmptyDataCell extends AnalysationError {
     }
 }
 
+// TODO : maybe split up config and file related errors into their own modules (ConfigErrors, FileErrors)
 class Errors {
     static AnalysationError = AnalysationError
     static FileNotExists = FileNotExists
@@ -119,6 +124,7 @@ class Errors {
     static EmptyDataCell = EmptyDataCell
 }
 
+// TODO : implement a GLOBAL cache that can hold multiple workbooks
 let workbook = null
 let workbookName = null
 
@@ -153,6 +159,7 @@ async function analyze(
         }
     } = {}
 ) {
+    // TODO : use getFile() function to get the workbook
     // check file access
     try {
         await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
@@ -190,7 +197,7 @@ async function analyze(
             })
             workbookName = filename
         } catch (error) {
-            // early break out the switch statement, because we cannot read the file
+            // early break out because we cannot read the file
             errors.push(error)
             return errors
         }
@@ -278,7 +285,6 @@ async function analyze(
                             return 0
                         })
                     if (matches.length === 0) {
-                        // TODO : check if a data value is present
                         errors.push(new MissingDataHeader(filename, sheet.name, descriptor.key, header.text, headerIndex))
                         continue
                     }
@@ -297,11 +303,11 @@ async function analyze(
                         errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text, result.index))
                     if (result.rowError !== 0)
                         errors.push(
-                            new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
+                            new IncorrectHeaderRow(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
                         )
                     if (result.colError !== 0)
                         errors.push(
-                            new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
+                            new IncorrectHeaderColumn(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
                         )
                 }
                 // TODO : this belongs to part 5.
@@ -314,7 +320,6 @@ async function analyze(
                 const incorrectIndex = errors.filter(function (error) {
                     return (error instanceof IncorrectRowIndex || error instanceof IncorrectColumnIndex) && error.key === descriptor.key
                 })
-
                 // 4.4 check the value
                 if (incorrectIndex.length < 1) {
                     if (cell.type === ExcelJS.ValueType.Null) {
@@ -322,7 +327,8 @@ async function analyze(
                     }
                     // valid data cell that contains some data we do not know jet, do nothing
                 } else {
-                    //console.group(descriptor.key)
+                    // calc alternate positions
+                    // all alternate positions of one descriptors header should point to the same cell
                     for (let eCnt = 0; eCnt < incorrectIndex.length; eCnt++) {
                         const error = incorrectIndex[eCnt]
                         const header = descriptor.header[error.header]
@@ -332,18 +338,16 @@ async function analyze(
                         header.columnOffset = error instanceof IncorrectColumnIndex ? error.column - header.col : 0
                         header.alternateRow = header.row + header.rowOffset + header.relativeRow
                         header.alternateColumn = header.col + header.columnOffset + header.relativeColumn
-                        //console.log({ valueRow, valueColumn })
-                        //console.log(header)
                     }
-                    // all alternate positions of one descriptors header should point to the same cell
-                    //console.groupEnd()
                 }
             }
-            // 5. search value cell
+            // 5. search value cell and check if it's not empty
             // 5.1 get value cell position from config
-            // 5.2 calc alternate positions if incorrect headers row or column indices are present
+            // 5.2 calc alternate positions if incorrect header row or column indices are present
             // 5.3 check positions
+            // what if original position and alternate position have a value?
 
+            // this is the last analysation step! next adapt the config to the errors
             break
     }
     return errors

@@ -2,7 +2,7 @@ module.exports = {
     NoErrors: {
         worksheet: 'TestList',
         type: 'list',
-        row: 4,
+        row: 5,
         columns: [
             { index: 2, key: 'col-1', header: [{ text: 'one', row: 4, col: 2 }] },
             { index: 3, key: 'col-2', header: [{ text: 'two', row: 4, col: 3 }] },
@@ -12,7 +12,7 @@ module.exports = {
     InconsistentHeaderName: {
         worksheet: 'TestList',
         type: 'list',
-        row: 11,
+        row: 12,
         columns: [
             { index: 2, key: 'col-4', header: [{ text: 'four', row: 11, col: 2 }] },
             { index: 3, key: 'col-5', header: [{ text: 'five', row: 11, col: 3 }] },
@@ -22,7 +22,7 @@ module.exports = {
     MissingDataHeader: {
         worksheet: 'TestList',
         type: 'list',
-        row: 18,
+        row: 19,
         columns: [
             { index: 2, key: 'col-7', header: [{ text: 'seven', row: 18, col: 2 }] },
             { index: 3, key: 'col-8', header: [{ text: 'eight', row: 18, col: 3 }] },
@@ -32,7 +32,7 @@ module.exports = {
     IncorrectRowIndex: {
         worksheet: 'TestList',
         type: 'list',
-        row: 25,
+        row: 26,
         columns: [
             { index: 2, key: 'col-10', header: [{ text: 'ten', row: 25, col: 2 }] },
             { index: 3, key: 'col-11', header: [{ text: 'eleven', row: 25, col: 3 }] },
@@ -42,7 +42,7 @@ module.exports = {
     IncorrectColumnIndex: {
         worksheet: 'TestList',
         type: 'list',
-        row: 33,
+        row: 34,
         columns: [
             { index: 2, key: 'col-13', header: [{ text: 'thirteen', row: 33, col: 2 }] },
             { index: 3, key: 'col-14', header: [{ text: 'fourteen', row: 33, col: 3 }] },
@@ -52,7 +52,7 @@ module.exports = {
     MultiCellHeaders: {
         worksheet: 'TestList',
         type: 'list',
-        row: 40,
+        row: 42,
         columns: [
             {
                 index: 2,

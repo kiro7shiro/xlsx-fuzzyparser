@@ -1,4 +1,6 @@
+// TODO : redefine schema to add descriptors
 // TODO : redefine schema to add headers
+// TODO : rename header to headers in configs descriptors
 // TODO : rename col to column in headers
 // TODO : rename worksheet to sheetName
 const Ajv = require("ajv")

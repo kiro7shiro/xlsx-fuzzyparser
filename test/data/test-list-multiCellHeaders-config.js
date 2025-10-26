@@ -2,7 +2,7 @@ module.exports = {
     NoErrors: {
         worksheet: 'TestList',
         type: 'list',
-        row: 40,
+        row: 42,
         columns: [
             {
                 index: 2,
@@ -99,7 +99,7 @@ module.exports = {
                 ]
             },
             {
-                index: 3,
+                index: 4,
                 key: 'col-27',
                 header: [
                     { text: 'Twenty', row: 65, col: 4 },

@@ -4,3 +4,5 @@
  * @param {Object} config
  */
 function validate(filename, config) {}
+
+module.exports = { validate }

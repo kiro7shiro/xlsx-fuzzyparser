@@ -1,3 +1,7 @@
+/**
+ * Module for adapting a config object.
+ */
+
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { Errors: AnalysationErrors } = require('./analyze.js')
 
@@ -79,14 +83,11 @@ function adapt(config, errors) {
                 }
             }
             // incorrect indexes
-            // TODO : make a strategy for adapting the value position, too
-            //        where should values be located in relation to their headers ??? 
-            //        calc the estimated position based on the relative location in the config
-            //        we can only check for data if a validator is present
             const incorrectIndex = errors.filter(function (error) {
                 return error instanceof AnalysationErrors.IncorrectRowIndex || error instanceof AnalysationErrors.IncorrectColumnIndex
             })
             for (let iCnt = 0; iCnt < incorrectIndex.length; iCnt++) {
+                // TODO : calc alternate positions for value cells
                 const error = incorrectIndex[iCnt]
                 const descriptor = descriptors.find(function (desc) {
                     return desc.key === error.key
