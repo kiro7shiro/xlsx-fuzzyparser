@@ -6,7 +6,6 @@ const fs = require('fs')
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
-
 class FileNotExists extends Error {
     constructor(filepath) {
         super(`File: ${filepath} doesn't exists.`)
