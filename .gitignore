@@ -2,4 +2,3 @@ node_modules
 test/data/real
 test/data/temp
 *.~lock.*
-test/realWorldData.js

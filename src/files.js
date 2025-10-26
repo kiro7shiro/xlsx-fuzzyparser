@@ -1,26 +1,50 @@
 /**
- * Module for handling file related functions
- * retrieving file data
- * save an index.json file nearby the opened files
- * load file index if a json file is present nearby
+ * Module for handling excel file related functions.
  */
 
 const fs = require('fs')
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
+
+class FileNotExists extends Error {
+    constructor(filepath) {
+        super(`File: ${filepath} doesn't exists.`)
+        this.filepath = filepath
+    }
+}
+
+class Errors {
+    static FileNotExists = FileNotExists
+}
+
+const fileCache = new Map()
+
+// TODO : implement an expire condition
+// TODO : check if file was rewritten during calls and reload it if true
+async function getWorkbook(filepath) {
+    if (!fs.existsSync(filepath)) throw new FileNotExists(filepath)
+    if (!fileCache.has(filepath)) {
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.readFile(filepath)
+        fileCache.set(filepath, workbook)
+    }
+    return fileCache.get(filepath)
+}
+
 /**
  * Retrieves worksheet data, given certain parameters.
  *
- * @param {Object} worksheet exceljs worksheet object
+ * @param {Object} worksheet ExcelJS worksheet object
  * @param {Object} [options]
  * @param {Number} [options.startRow] row to start from
  * @param {Number} [options.rowCount] number of rows to retrieve
  * @param {Number} [options.startCol] column to start from
  * @param {Number} [options.colCount] number of columns to retrieve
- * @returns {[ExcelJS.Cell]} array of exceljs cell objects
+ * @returns {[ExcelJS.Cell]} array of ExcelJS cell objects
  */
 function getWorksheetData(worksheet, { startRow = null, rowCount = null, startCol = null, colCount = null } = {}) {
+    // TODO : check for too large sheets that cause a memory overflow when loaded
     if (startRow === null) startRow = 1
     if (rowCount === null) rowCount = worksheet.rowCount
     if (startCol === null) startCol = 1
@@ -47,42 +71,6 @@ function getWorksheetData(worksheet, { startRow = null, rowCount = null, startCo
 }
 
 function createConfig(workbook) {}
-
-/**
- * Saves an index of the contents of an Excel file as a JSON file.
- *
- * @param {string} filename - The path of the Excel file to read from. If the filename ends with '-index.json', it is assumed to be the index file itself.
- * @param {Object} [options]
- * @param {string[]} [options.sheetKeys] - Keys to be used for indexing sheet data.
- * @param {string[]} [options.cellKeys] - Keys to be used for indexing cell data.
- * @returns {Promise<Object>} - A promise that resolves to the index object created from the Excel file.
- * @throws Will throw an error if reading the Excel file or writing the JSON file fails.
- */
-async function saveIndex(filename, { sheetKeys = ['name'], cellKeys = ['text'] } = {}) {
-    let index = {}
-    let indexName = null
-    if (filename.endsWith('-index.json')) {
-        indexName = filename
-        filename = filename.replace('-index.json', '.xlsx')
-    } else {
-        indexName = filename.replace(/\.[^.]+$/, '-index.json')
-    }
-    const workbook = new ExcelJS.Workbook()
-    try {
-        await workbook.xlsx.readFile(filename)
-        index.sheetNamesIndex = new Fuse(workbook.worksheets, { keys: sheetKeys }).getIndex()
-        for (let sheetIndex = 0; sheetIndex < workbook.worksheets.length; sheetIndex++) {
-            const sheet = workbook.worksheets[sheetIndex]
-            const data = getWorksheetData(sheet)
-            index[sheet.name] = Fuse.createIndex(cellKeys, data)
-        }
-        const json = JSON.stringify(index, null, 4)
-        fs.writeFileSync(indexName, json, 'utf-8')
-        return index
-    } catch (error) {
-        throw error
-    }
-}
 
 /**
  * Loads an index of the contents of an Excel file from a JSON file.
@@ -122,8 +110,45 @@ async function loadIndex(filename, { sheetKeys = ['name'], cellKeys = ['text'] }
     return index
 }
 
+/**
+ * Saves an index of the contents of an Excel file as a JSON file.
+ *
+ * @param {string} filename - The path of the Excel file to read from. If the filename ends with '-index.json', it is assumed to be the index file itself.
+ * @param {Object} [options]
+ * @param {string[]} [options.sheetKeys] - Keys to be used for indexing sheet data.
+ * @param {string[]} [options.cellKeys] - Keys to be used for indexing cell data.
+ * @returns {Promise<Object>} - A promise that resolves to the index object created from the Excel file.
+ * @throws Will throw an error if reading the Excel file or writing the JSON file fails.
+ */
+async function saveIndex(filename, { sheetKeys = ['name'], cellKeys = ['text'] } = {}) {
+    let index = {}
+    let indexName = null
+    if (filename.endsWith('-index.json')) {
+        indexName = filename
+        filename = filename.replace('-index.json', '.xlsx')
+    } else {
+        indexName = filename.replace(/\.[^.]+$/, '-index.json')
+    }
+    try {
+        const workbook = await getWorkbook(filename)
+        index.sheetNamesIndex = new Fuse(workbook.worksheets, { keys: sheetKeys }).getIndex()
+        for (let sheetIndex = 0; sheetIndex < workbook.worksheets.length; sheetIndex++) {
+            const sheet = workbook.worksheets[sheetIndex]
+            const data = getWorksheetData(sheet)
+            index[sheet.name] = Fuse.createIndex(cellKeys, data)
+        }
+        const json = JSON.stringify(index, null, 4)
+        fs.writeFileSync(indexName, json, 'utf-8')
+        return index
+    } catch (error) {
+        throw error
+    }
+}
+
 module.exports = {
+    getWorkbook,
     getWorksheetData,
     loadIndex,
-    saveIndex
+    saveIndex,
+    Errors
 }

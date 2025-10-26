@@ -2,6 +2,8 @@ const assert = require('assert')
 const path = require('path')
 const { validateConfig, validateMultiConfig } = require('../src/config.js')
 
+// TODO : implement config specific tests
+
 describe('config', function () {
     const config = require(path.resolve(__dirname, './data/test-config.js'))
     it('is a multi config', async function () {

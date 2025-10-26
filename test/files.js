@@ -1,16 +1,25 @@
 const assert = require('assert')
 const path = require('path')
 const ExcelJS = require('exceljs')
-const { loadIndex, saveIndex, getWorksheetData } = require('../src/files.js')
+const { loadIndex, saveIndex, getWorksheetData, getWorkbook } = require('../src/files.js')
 
 describe('files', function () {
     const testFile = path.resolve(__dirname, './data/test-file.xlsx')
+    describe('caching', function () {
+        it('getWorkbook', async function () {
+            const workbook = await getWorkbook(testFile)
+            assert.ok(workbook instanceof ExcelJS.Workbook, 'Workbook should be an instance of ExcelJS.Workbook.')
+            // TODO : implement more checks for the resulting workbook
+        })
+    })
     describe('indexing', function () {
         it('loadIndex', async function () {
+            this.timeout(15000)
+            this.slow(10000)
             // Initial load of the index
             const index = await loadIndex(testFile)
-            assert.ok(index, 'Initial index should be loaded')
-            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing should be loaded')
+            assert.ok(index, 'Initial index file should be loaded.')
+            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing property should be loaded.')
             // Simulate a file change by modifying the file
             const oldChange = index.Indexing.records[1]['$']['0']['v']
             const workbook = new ExcelJS.Workbook()
@@ -22,19 +31,21 @@ describe('files', function () {
             await workbook.xlsx.writeFile(testFile)
             const index2 = await loadIndex(testFile)
             const newChange = index2.Indexing.records[1]['$']['0']['v']
-            assert.ok(oldChange !== newChange)
+            assert.ok(oldChange !== newChange, 'Index file should be rebuild after file changed.')
         })
         it('saveIndex', async function () {
+            this.timeout(15000)
+            this.slow(10000)
             const indexFile = path.resolve(__dirname, './data/test-file-index.json')
             const index = await saveIndex(indexFile)
-            assert.ok(index, 'Initial index should be loaded')
-            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing should be loaded')
+            assert.ok(index, 'Initial index file should be loaded.')
+            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing property should be loaded.')
         })
         it('load *.json index', async function () {
             const indexFile = path.resolve(__dirname, './data/test-file-index.json')
             const index = await loadIndex(indexFile)
-            assert.ok(index, 'Initial index should be loaded')
-            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing should be loaded')
+            assert.ok(index, 'Initial index file should be loaded.')
+            assert.ok(Object.hasOwn(index, 'Indexing'), 'Indexing property should be loaded.')
         })
     })
     describe('getWorksheetData', function () {
@@ -64,47 +75,9 @@ describe('files', function () {
             await workbook.xlsx.readFile(testFile)
             let testSheet = workbook.getWorksheet('Merged')
             let data = getWorksheetData(testSheet)
-            /* console.table(
-                data.map((c) => {
-                    return { address: c.address, text: c.text }
-                })
-            ) */
             assert.strictEqual(data.length, 16, `data should have 16 items but got:${data.length}`)
             assert.strictEqual(data[0].text, 'Column1 Merge1', `data[0] should have text "Column1 Merge1" but got:${data[0].text}`)
             assert.strictEqual(data[2].text, 'Column3 Merge2', `data[2] should have text "Column2 Merge2" but got:${data[2].text}`)
         })
     })
 })
-
-async function testValues() {
-    const testFile = path.resolve(__dirname, './data/real/test-newline-file.xlsx')
-    const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.readFile(testFile)
-    const testSheet = workbook.getWorksheet('Hallen')
-    const data = getWorksheetData(testSheet)
-        .filter(function (cell) {
-            return cell.row > 11 && cell.row < 14
-        })
-        .map(function (cell) {
-            cell.testText = cell.text
-            cell.testValue = cell.value
-            cell.testStyle = cell.style
-            cell.testType = cell.type
-            return cell
-        })
-    const first = data[0]
-    console.table(data)
-    console.log(ExcelJS.ValueType)
-    console.log(Object.keys(workbook.worksheets[0]))
-    console.log(workbook.worksheets[0].properties)
-    //console.log(first)
-    console.log(first.value, first.type)
-    for (const key in ExcelJS.ValueType) {
-        const valType = ExcelJS.ValueType[key]
-        console.log(key, first.type === valType)
-    }
-    //console.log(data[4])
-    //console.log(data[5])
-}
-
-//testValues()
