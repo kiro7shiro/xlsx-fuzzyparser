@@ -9,6 +9,25 @@ const fs = require('fs')
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
+class FileNotExists extends Error {
+    constructor(filepath) {
+        super(`File: '${filepath}' doesn't exists.`)
+    }
+}
+
+
+const fileCache = new Map()
+
+async function getWorkbook(filepath) {
+    if (!fs.existsSync(filepath)) throw new FileNotExists(filepath)
+    if (!fileCache.has(filepath)) {
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.readFile(filepath)
+        fileCache.set(filepath, workbook)
+    }
+    return fileCache.get(filepath)
+}
+
 /**
  * Retrieves worksheet data, given certain parameters.
  *
@@ -123,6 +142,7 @@ async function loadIndex(filename, { sheetKeys = ['name'], cellKeys = ['text'] }
 }
 
 module.exports = {
+    getWorkbook,
     getWorksheetData,
     loadIndex,
     saveIndex
