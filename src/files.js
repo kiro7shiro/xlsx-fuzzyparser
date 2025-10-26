@@ -6,24 +6,6 @@ const fs = require('fs')
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
-class FileNotExists extends Error {
-    constructor(filepath) {
-        super(`File: '${filepath}' doesn't exists.`)
-    }
-}
-
-const fileCache = new Map()
-
-// TODO : implement an expire condition
-async function getWorkbook(filepath) {
-    if (!fs.existsSync(filepath)) throw new FileNotExists(filepath)
-    if (!fileCache.has(filepath)) {
-        const workbook = new ExcelJS.Workbook()
-        await workbook.xlsx.readFile(filepath)
-        fileCache.set(filepath, workbook)
-    }
-    return fileCache.get(filepath)
-}
 
 class FileNotExists extends Error {
     constructor(filepath) {
@@ -38,18 +20,16 @@ class Errors {
 
 const fileCache = new Map()
 
+// TODO : implement an expire condition
+// TODO : check if file was rewritten during calls and reload it if true
 async function getWorkbook(filepath) {
-    // TODO : implement a expired time
-    // TODO : check if file was rewritten during calls and reload it if true
-    if (fileCache.has(filepath)) {
-        return fileCache.get(filepath)
-    }
-    const workbook = new ExcelJS.Workbook()
-    if (fs.existsSync(filepath)) {
+    if (!fs.existsSync(filepath)) throw new FileNotExists(filepath)
+    if (!fileCache.has(filepath)) {
+        const workbook = new ExcelJS.Workbook()
         await workbook.xlsx.readFile(filepath)
+        fileCache.set(filepath, workbook)
     }
-    fileCache.set(filepath, workbook)
-    return workbook
+    return fileCache.get(filepath)
 }
 
 /**
@@ -166,7 +146,9 @@ async function saveIndex(filename, { sheetKeys = ['name'], cellKeys = ['text'] }
 }
 
 module.exports = {
+    getWorkbook,
     getWorksheetData,
     loadIndex,
-    saveIndex
+    saveIndex,
+    Errors
 }
