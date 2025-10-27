@@ -65,10 +65,10 @@ async function serialize(
             if (mode === 'overwrite') {
                 // write list header
                 // TODO : check config for descriptor headers
-                const headerRow = worksheet.getRow(config.row)
+                const headerRow = worksheet.getRow(config.row - 1)
                 headerRow.values = Object.keys(data[0])
                 for (let dIndex = 0; dIndex < data.length; dIndex++) {
-                    const row = worksheet.getRow(config.row + dIndex + 1)
+                    const row = worksheet.getRow(config.row + dIndex)
                     row.values = Object.values(data[dIndex])
                 }
             } else {
