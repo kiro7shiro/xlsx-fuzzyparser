@@ -25,6 +25,7 @@ class Errors {
  * @param {Object} config
  */
 async function parse(filepath, config = null) {
+    // check config
     if (config === null) throw new ParsingError(filepath, `Can't parse: ${path.basename(filepath)}. No config given.`)
     if (typeof config === 'string') {
         const configContent = fs.readFileSync(config, 'utf8')

@@ -22,6 +22,11 @@ async function serialize(
     } = {},
     { mode = 'overwrite' } = {}
 ) {
+    // check config
+    if (typeof config === 'string') {
+        const configContent = fs.readFileSync(config, 'utf8')
+        config = JSON.parse(configContent)
+    }
     // open file
     const workbook = await getWorkbook(filepath)
     // validate config and use results as flags
