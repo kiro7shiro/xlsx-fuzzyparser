@@ -19,13 +19,17 @@ class Errors {
 
 const fileCache = new Map()
 
-// TODO : create a new workbook if no one exists
-// TODO : implement an expire condition
-// TODO : check if file was rewritten during calls and reload it if true
-async function getWorkbook(filepath) {
-    if (!fs.existsSync(filepath)) throw new FileNotExists(filepath)
+async function getWorkbook(filepath, { create = true } = {}) {
+    // TODO : implement an expire condition
+    // TODO : check if file was rewritten during calls and reload it if true
+    let workbook = null
+    if (!fs.existsSync(filepath)) {
+        if (!create) throw new FileNotExists(filepath)
+        workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.writeFile(filepath)
+    }
     if (!fileCache.has(filepath)) {
-        const workbook = new ExcelJS.Workbook()
+        workbook = new ExcelJS.Workbook()
         await workbook.xlsx.readFile(filepath)
         fileCache.set(filepath, workbook)
     }
