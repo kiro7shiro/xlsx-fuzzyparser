@@ -19,6 +19,7 @@ class Errors {
 
 const fileCache = new Map()
 
+// TODO : create a new workbook if no one exists
 // TODO : implement an expire condition
 // TODO : check if file was rewritten during calls and reload it if true
 async function getWorkbook(filepath) {

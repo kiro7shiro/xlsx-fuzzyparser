@@ -2,14 +2,16 @@
  * Module for parsing data from an excel file.
  */
 
+const fs = require('fs')
+const path = require('path')
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { getWorkbook, getWorksheetData } = require('./files.js')
 
 class ParsingError extends Error {
-    constructor(filename, message) {
+    constructor(filepath, message) {
         super(message)
         this.name = 'ParsingError'
-        this.filename = filename
+        this.filepath = filepath
     }
 }
 
@@ -23,17 +25,23 @@ class Errors {
  * @param {Object} config
  */
 async function parse(filepath, config = null) {
+    if (config === null) throw new ParsingError(filepath, `Can't parse: ${path.basename(filepath)}. No config given.`)
+    if (typeof config === 'string') {
+        const configContent = fs.readFileSync(config, 'utf8')
+        config = JSON.parse(configContent)
+    }
     const isConfig = validateConfig(config)
     const isMultiConfig = validateMultiConfig(config)
     if (!isConfig && !isMultiConfig) {
         // TODO : throw error for invalid config
+        // TODO : import errors from config.js
         return false
     }
     if (isMultiConfig) {
         // parse a multi config
         for (const key of config) {
             const subConfig = fileConfig[key]
-            await parse2(filepath, subConfig)
+            await parse(filepath, subConfig)
         }
     } else {
         const workbook = await getWorkbook(filepath)
