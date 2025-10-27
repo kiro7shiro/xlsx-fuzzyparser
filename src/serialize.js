@@ -2,6 +2,7 @@
  * Module for serializing data into a excel workbook.
  */
 
+const fs = require('fs')
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { getWorkbook } = require('./files.js')
 
