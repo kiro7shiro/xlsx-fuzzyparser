@@ -3,6 +3,7 @@
  */
 
 const fs = require('fs')
+const path = require('path')
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { getWorkbook } = require('./files.js')
 
