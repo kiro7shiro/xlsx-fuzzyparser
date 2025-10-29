@@ -58,12 +58,9 @@ async function parse(filepath, config = null) {
             for (let fCnt = 0; fCnt < config.fields.length; fCnt++) {
                 const field = config.fields[fCnt]
                 const value = worksheet.getRow(field.row).values[field.col]
-                if (field.parser) {
-                    obj[field.key] = field.parser(value)
-                } else {
-                    obj[field.key] = value
-                }
+                obj[field.key] = value
             }
+            if (config.parsers) config.parsers.map(parser => parser(obj))
             result.push(obj)
         } else {
             const startRow = config === null ? 1 : config.row
@@ -73,12 +70,9 @@ async function parse(filepath, config = null) {
                 const obj = {}
                 for (let cCnt = 0; cCnt < config.columns.length; cCnt++) {
                     const column = config.columns[cCnt]
-                    if (column.parser) {
-                        obj[column.key] = column.parser(values[column.index])
-                    } else {
-                        obj[column.key] = values[column.index]
-                    }
+                    obj[column.key] = values[column.index]
                 }
+                if (config.parsers) config.parsers.map(parser => parser(obj))
                 return obj
             })
         }
