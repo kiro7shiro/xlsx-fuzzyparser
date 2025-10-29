@@ -28,8 +28,13 @@ async function parse(filepath, config = null) {
     // check config
     if (config === null) throw new ParsingError(filepath, `Can't parse: ${path.basename(filepath)}. No config given.`)
     if (typeof config === 'string') {
-        const configContent = fs.readFileSync(config, 'utf8')
-        config = JSON.parse(configContent)
+        const ext = path.extname(config)
+        if (ext === '.json') {
+            const configContent = fs.readFileSync(config, 'utf8')
+            config = JSON.parse(configContent)
+        } else if (ext === '.js') {
+            config = require(config)
+        }
     }
     const isConfig = validateConfig(config)
     const isMultiConfig = validateMultiConfig(config)

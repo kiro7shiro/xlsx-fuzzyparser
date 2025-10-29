@@ -25,8 +25,13 @@ async function serialize(
 ) {
     // check config
     if (typeof config === 'string') {
-        const configContent = fs.readFileSync(config, 'utf8')
-        config = JSON.parse(configContent)
+        const ext = path.extname(config)
+        if (ext === '.json') {
+            const configContent = fs.readFileSync(config, 'utf8')
+            config = JSON.parse(configContent)
+        } else if (ext === '.js') {
+            config = require(config)
+        }
     }
     // open file
     const workbook = await getWorkbook(filepath)
@@ -46,13 +51,11 @@ async function serialize(
     } else {
         // add or select sheet
         let worksheet = null
-        if (workbook.worksheets.length >= 2) {
-            for (let sCnt = 0; sCnt < workbook.worksheets.length; sCnt++) {
-                const sheet = workbook.worksheets[sCnt]
-                if (sheet.name === config.worksheet) {
-                    worksheet = sheet
-                    break
-                }
+        for (let sCnt = 0; sCnt < workbook.worksheets.length; sCnt++) {
+            const sheet = workbook.worksheets[sCnt]
+            if (sheet.name === config.worksheet) {
+                worksheet = sheet
+                break
             }
         }
         if (worksheet === null) {
