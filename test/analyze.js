@@ -2,8 +2,9 @@ const assert = require('assert')
 const path = require('path')
 const { analyze, Errors } = require('../index.js')
 
-// TODO : rewrite config to new test style in doc file
-// TODO : rewrite tests
+// TODO 
+// [ ] : rewrite config to new test style in doc file
+// [ ] : rewrite tests
 
 describe('analyze', function () {
 	const testFile = path.resolve(__dirname, './data/test-file.xlsx')

@@ -6,14 +6,9 @@ When you work in a place where your colleagues don't always follow the standard,
 
 ## Features
 - Fuzzy search for data headers
-- Support for multiple worksheets
-- Easy-to-use API for extracting data
 
 ## Use Cases
 - Extracting data from Excel files with inconsistent formatting
-
-Getting Started
-To use this library, simply install it using npm or yarn, and then import it into your project. See the documentation for more information on how to use the library.
 
 ## Program flow
 - analyze   : Analyze an excel file against a given configuration object and return the differences as an array of errors.

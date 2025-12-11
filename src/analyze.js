@@ -2,15 +2,16 @@
  * Module for analyzing excel files against a config.
  */
 
+// TODO 
+// [ ] : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
+// [ ] : support for horizontal lists ???
+
 const fs = require('fs').promises
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { loadIndex, getWorksheetData } = require('./files.js')
-
-// TODO : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
-// TODO : support for horizontal lists ???
 
 class FileNotExists extends Error {
     constructor(filename) {
@@ -129,6 +130,7 @@ class Errors {
 let workbook = null
 let workbookName = null
 
+// TODO : add the ability to accept strings for pointing to a config file
 /**
  * Analyze a *.xlsx file by a given configuration. Returning the differences as errors.
  * @param {String} filename a string containing path and filename for the workbook to be analyzed
