@@ -124,6 +124,7 @@ class Errors {
     static EmptyDataCell = EmptyDataCell
 }
 
+// TODO : use getWorkbook() function to get the workbook as it has a built in chaching system
 // TODO : implement a GLOBAL cache that can hold multiple workbooks
 let workbook = null
 let workbookName = null
@@ -159,8 +160,9 @@ async function analyze(
         }
     } = {}
 ) {
-    // TODO : use getFile() function to get the workbook
+    // TODO : use getWorkbook() function to get the workbook
     // check file access
+    console.log(headEngineOptions)
     try {
         await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
     } catch (error) {
@@ -267,7 +269,7 @@ async function analyze(
                 for (let headerIndex = 0; headerIndex < descriptor.header.length; headerIndex++) {
                     const header = descriptor.header[headerIndex]
                     //console.log(header)
-                    const headEngine = new Fuse(data, Object.assign({}, headEngineOptions, { distance: header.text.length }), sheetIndex)
+                    const headEngine = new Fuse(data, headEngineOptions, sheetIndex)
                     let matches = headEngine.search(header.text)
                     //console.table(matches)
                     matches = matches
@@ -281,14 +283,14 @@ async function analyze(
                             return accu
                         }, [])
                         .sort(function (a, b) {
-                            if (a.score === b.score) return a.distance - b.distance
-                            return 0
+                            if (a.distance === b.distance) return a.score - b.score
+                            return a.distance - b.distance
                         })
                     if (matches.length === 0) {
                         errors.push(new MissingDataHeader(filename, sheet.name, descriptor.key, header.text, headerIndex))
                         continue
                     }
-                    //console.table(matches)
+                    console.table(matches)
                     // pick the first match as result
                     const result = matches[0]
                     result.index = headerIndex
