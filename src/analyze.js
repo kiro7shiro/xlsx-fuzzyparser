@@ -2,7 +2,7 @@
  * Module for analyzing excel files against a config.
  */
 
-// TODO 
+// TODO
 // [ ] : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
 // [ ] : support for horizontal lists ???
 
@@ -147,24 +147,22 @@ async function analyze(
     config,
     {
         inconsistentScore = 0.001,
-        incorrectDistance = 6,
+        missingScore = 0.5,
+        incorrectDistance = 4,
         sheetEngineOptions = {
             includeScore: true,
             isCaseSensitive: true,
-            threshold: 0.4,
             keys: ['name']
         },
         headEngineOptions = {
             includeScore: true,
             isCaseSensitive: true,
-            threshold: 0.4,
             keys: ['text']
         }
     } = {}
 ) {
     // TODO : use getWorkbook() function to get the workbook
     // check file access
-    console.log(headEngineOptions)
     try {
         await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
     } catch (error) {
@@ -281,7 +279,7 @@ async function analyze(
                             match.text = match.item.text
                             //match.address = `R${match.item.row}C${match.item.col}`
                             match.distance = Math.abs(match.rowError) + Math.abs(match.colError)
-                            if (match.distance < incorrectDistance) accu.push(match)
+                            if (match.score < missingScore && match.distance < incorrectDistance) accu.push(match)
                             return accu
                         }, [])
                         .sort(function (a, b) {
@@ -292,13 +290,13 @@ async function analyze(
                         errors.push(new MissingDataHeader(filename, sheet.name, descriptor.key, header.text, headerIndex))
                         continue
                     }
-                    console.table(matches)
+                    //console.table(matches)
                     // pick the first match as result
                     const result = matches[0]
                     result.index = headerIndex
                     results.push(result)
                 }
-                //console.table(results)
+                console.table(results)
                 // TODO : if config.type === list check if columns are in a straight line horizontally( or vertically)
                 // TODO : check if multi cell headers are in line horizontally or vertically
                 for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
