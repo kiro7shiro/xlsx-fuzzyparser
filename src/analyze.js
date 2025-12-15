@@ -259,7 +259,8 @@ async function analyze(
             } else {
                 sheetIndex = Fuse.createIndex(headEngineOptions.keys, data)
             }
-            // 4. search descriptors
+            // 4. search for descriptors
+            const headEngine = new Fuse(data, headEngineOptions, sheetIndex)
             for (let descriptorIndex = 0; descriptorIndex < descriptors.length; descriptorIndex++) {
                 const descriptor = descriptors[descriptorIndex]
                 if (!Object.hasOwn(descriptor, 'header')) continue
@@ -268,8 +269,14 @@ async function analyze(
                 let results = []
                 for (let headerIndex = 0; headerIndex < descriptor.header.length; headerIndex++) {
                     const header = descriptor.header[headerIndex]
+                    const sideHeaders = descriptor.header.reduce(function (a, c, i) {
+                        if (i === headerIndex) return a
+                        a.push(c)
+                        return a
+                    }, [])
+                    //console.log(tIndex)
                     //console.log(header)
-                    const headEngine = new Fuse(data, headEngineOptions, sheetIndex)
+                    // 4.1 search descriptor header
                     let matches = headEngine.search(header.text)
                     //console.table(matches)
                     matches = matches
@@ -277,8 +284,10 @@ async function analyze(
                             match.rowError = match.item.row - header.row
                             match.colError = match.item.col - header.col
                             match.text = match.item.text
-                            //match.address = `R${match.item.row}C${match.item.col}`
                             match.distance = Math.abs(match.rowError) + Math.abs(match.colError)
+                            // don't allow exact matches of side by side headers
+                            if (sideHeaders.some(h => h.text === match.text)) return accu
+                            //
                             if (match.score < missingScore && match.distance < incorrectDistance) accu.push(match)
                             return accu
                         }, [])
@@ -296,9 +305,11 @@ async function analyze(
                     result.index = headerIndex
                     results.push(result)
                 }
+                console.log('descriptor results:')
                 console.table(results)
+                // TODO : combine errors of multiple headers from a single descriptor into one error
                 // TODO : if config.type === list check if columns are in a straight line horizontally( or vertically)
-                // TODO : check if multi cell headers are in line horizontally or vertically
+                // TODO : check if multi cell headers are in order of their positions according to the config
                 for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
                     const result = results[resultIndex]
                     if (result.score >= inconsistentScore)
