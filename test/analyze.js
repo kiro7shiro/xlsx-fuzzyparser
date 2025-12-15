@@ -59,8 +59,14 @@ describe('analyze', function () {
     it('MissingHeader', async function () {
         const { MissingHeader: config } = testConfig
         const errors = await analyze(testFile, config)
-        console.table(errors)
-        //assert.ok(errors.length === 0, `Expected errors length to be 0 but got: '${errors.length}'`)
+        //console.table(errors)
+        const expected = ['Header11-2', 'Header11-9', 'Header11-18', 'Header11-24', 'Header11-25']
+        assert.ok(errors.length === 5, `Expected errors length to be 5 but got: '${errors.length}'`)
+        for (let eCnt = 0; eCnt < errors.length; eCnt++) {
+            const error = errors[eCnt]
+            const header = expected[eCnt]
+            assert.strictEqual(error.header, header)
+        }
     })
     it('IncorrectRow')
     it('IncorrectColumn')

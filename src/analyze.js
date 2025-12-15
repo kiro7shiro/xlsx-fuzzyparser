@@ -305,8 +305,8 @@ async function analyze(
                     result.index = headerIndex
                     results.push(result)
                 }
-                console.log('descriptor results:')
-                console.table(results)
+                //console.log('descriptor results:')
+                //console.table(results)
                 // TODO : combine errors of multiple headers from a single descriptor into one error
                 // TODO : if config.type === list check if columns are in a straight line horizontally( or vertically)
                 // TODO : check if multi cell headers are in order of their positions according to the config
