@@ -48,8 +48,8 @@ describe('analyze', function () {
         const { InconsistentHeader: config } = testConfig
         const errors = await analyze(testFile, config)
         //console.table(errors)
-        assert.ok(errors.length === 4, `Expected errors length to be 4 but got: '${errors.length}'`)
         const expected = ['HeAder7-2', 'headeR7-6', 'heAdeR7-8', 'heA_eR8-10']
+        assert.ok(errors.length === expected.length, `Expected errors length to be ${expected.length} but got: '${errors.length}'`)
         for (let eCnt = 0; eCnt < errors.length; eCnt++) {
             const error = errors[eCnt]
             const header = expected[eCnt]
@@ -60,14 +60,34 @@ describe('analyze', function () {
         const { MissingHeader: config } = testConfig
         const errors = await analyze(testFile, config)
         //console.table(errors)
-        const expected = ['Header11-2', 'Header11-9', 'Header11-18', 'Header11-24', 'Header11-25']
-        assert.ok(errors.length === 5, `Expected errors length to be 5 but got: '${errors.length}'`)
+        const expected = ['Header11-2', 'Header11-9', 'Header11-18', 'Header11-24', 'Header11-25', 'Header11-29', 'Header11-31']
+        assert.ok(errors.length === expected.length, `Expected errors length to be ${expected.length} but got: '${errors.length}'`)
         for (let eCnt = 0; eCnt < errors.length; eCnt++) {
             const error = errors[eCnt]
             const header = expected[eCnt]
             assert.strictEqual(error.header, header)
         }
     })
-    it('IncorrectRow')
+    it('IncorrectRow', async function () {
+        const { IncorrectRow: config } = testConfig
+        const errors = await analyze(testFile, config)
+        //console.table(errors)
+        const expected = [
+            { key: 'Data17-3', row: 18, header: 0 },
+            { key: 'Data17-10', row: 16, header: 0 },
+            { key: 'Data17-10', row: 16, header: 1 },
+            { key: 'Data17-15', row: 16, header: 0 },
+            { key: 'Data17-15', row: 18, header: 1 }
+        ]
+        assert.ok(errors.length === expected.length, `Expected errors length to be ${expected.length} but got: '${errors.length}'`)
+        for (let eCnt = 0; eCnt < errors.length; eCnt++) {
+            const error = errors[eCnt]
+            const expect = expected[eCnt]
+            assert.strictEqual(error.key, expect.key)
+            assert.strictEqual(error.row, expect.row)
+            assert.strictEqual(error.header, expect.header)
+        }
+
+    })
     it('IncorrectColumn')
 })

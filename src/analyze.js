@@ -307,9 +307,8 @@ async function analyze(
                 }
                 //console.log('descriptor results:')
                 //console.table(results)
+                // 4.2 analyze descriptor results
                 // TODO : combine errors of multiple headers from a single descriptor into one error
-                // TODO : if config.type === list check if columns are in a straight line horizontally( or vertically)
-                // TODO : check if multi cell headers are in order of their positions according to the config
                 for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
                     const result = results[resultIndex]
                     if (result.score >= inconsistentScore)
