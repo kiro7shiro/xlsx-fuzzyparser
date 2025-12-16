@@ -109,33 +109,22 @@ module.exports = {
         type: 'object',
         fields: [
             { row: 24, col: 4, key: 'Data24-4', header: [{ text: 'Header24-3', row: 24, col: 3 }] },
-            { row: 24, col: 9, key: 'Data24-9', header: [{ text: 'Header24-8', row: 24, col: 8 }] },
-            { row: 24, col: 15, key: 'Data24-15', header: [{ text: 'Header24-14', row: 24, col: 14 }] },
             {
                 row: 24,
-                col: 21,
-                key: 'Data24-21',
+                col: 11,
+                key: 'Data24-11',
                 header: [
-                    { text: 'Header24-19', row: 24, col: 19 },
-                    { text: 'Header24-20', row: 24, col: 20 }
+                    { text: 'Header24-9', row: 24, col: 9 },
+                    { text: 'Header24-10', row: 24, col: 10 }
                 ]
             },
             {
                 row: 24,
-                col: 26,
-                key: 'Data24-26',
+                col: 17,
+                key: 'Data24-17',
                 header: [
-                    { text: 'Header24-24', row: 24, col: 24 },
-                    { text: 'Header24-25', row: 24, col: 25 }
-                ]
-            },
-            {
-                row: 24,
-                col: 33,
-                key: 'Data24-33',
-                header: [
-                    { text: 'Header17-30', row: 17, col: 30 },
-                    { text: 'Header17-31', row: 17, col: 31 }
+                    { text: 'Header24-15', row: 24, col: 15 },
+                    { text: 'Header24-16', row: 24, col: 16 }
                 ]
             }
         ]

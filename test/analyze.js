@@ -3,7 +3,7 @@ const path = require('path')
 const { analyze, Errors } = require('../index.js')
 
 // TODO
-// [ ] : rewrite config to new test style in doc file
+// [ ] : rewrite config to new test style in test file
 // [ ] : rewrite tests
 
 describe('analyze', function () {
@@ -52,8 +52,8 @@ describe('analyze', function () {
         assert.ok(errors.length === expected.length, `Expected errors length to be ${expected.length} but got: '${errors.length}'`)
         for (let eCnt = 0; eCnt < errors.length; eCnt++) {
             const error = errors[eCnt]
-            const header = expected[eCnt]
-            assert.strictEqual(error.header, header)
+            const expect = expected[eCnt]
+            assert.strictEqual(error.header, expect)
         }
     })
     it('MissingHeader', async function () {
@@ -64,8 +64,8 @@ describe('analyze', function () {
         assert.ok(errors.length === expected.length, `Expected errors length to be ${expected.length} but got: '${errors.length}'`)
         for (let eCnt = 0; eCnt < errors.length; eCnt++) {
             const error = errors[eCnt]
-            const header = expected[eCnt]
-            assert.strictEqual(error.header, header)
+            const expect = expected[eCnt]
+            assert.strictEqual(error.header, expect)
         }
     })
     it('IncorrectRow', async function () {
@@ -89,5 +89,24 @@ describe('analyze', function () {
         }
 
     })
-    it('IncorrectColumn')
+    it('IncorrectColumn', async function () {
+        const { IncorrectColumn: config } = testConfig
+        const errors = await analyze(testFile, config)
+        //console.table(errors)
+        const expected = [
+            { key: 'Data24-4', column: 2, header: 0 },
+            { key: 'Data24-11', column: 8, header: 0 },
+            { key: 'Data24-11', column: 9, header: 1 },
+            { key: 'Data24-17', column: 13, header: 0 },
+            { key: 'Data24-17', column: 15, header: 1 }
+        ]
+        assert.ok(errors.length === expected.length, `Expected errors length to be ${expected.length} but got: '${errors.length}'`)
+        for (let eCnt = 0; eCnt < errors.length; eCnt++) {
+            const error = errors[eCnt]
+            const expect = expected[eCnt]
+            assert.strictEqual(error.key, expect.key)
+            assert.strictEqual(error.column, expect.column)
+            assert.strictEqual(error.header, expect.header)
+        }
+    })
 })
