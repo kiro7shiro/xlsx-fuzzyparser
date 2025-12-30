@@ -56,25 +56,6 @@ class InconsistentHeaderName extends AnalysationError {
         this.index = index
     }
 }
-
-class IncorrectHeaderRow extends AnalysationError {
-    constructor(filename, worksheet, key, row, header) {
-        super(filename, `Worksheet: '${worksheet}' header row for '${key}' seems to be: ${row}.`)
-        this.key = key
-        this.row = row
-        this.header = header
-    }
-}
-
-class IncorrectHeaderColumn extends AnalysationError {
-    constructor(filename, worksheet, key, column, header) {
-        super(filename, `Worksheet: '${worksheet}' header column for '${header}' seems to be: ${column}.`)
-        this.key = key
-        this.column = column
-        this.header = header
-    }
-}
-
 class IncorrectColumnIndex extends AnalysationError {
     constructor(filename, worksheet, key, column, header) {
         super(filename, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${column}.`)
@@ -117,8 +98,6 @@ class Errors {
     static SheetMissing = SheetMissing
     static InconsistentSheetName = InconsistentSheetName
     static InconsistentHeaderName = InconsistentHeaderName
-    static IncorrectHeaderColumn = IncorrectHeaderColumn
-    static IncorrectHeaderRow = IncorrectHeaderRow
     static IncorrectColumnIndex = IncorrectColumnIndex
     static IncorrectRowIndex = IncorrectRowIndex
     static MissingDataHeader = MissingDataHeader
@@ -286,7 +265,7 @@ async function analyze(
                             match.text = match.item.text
                             match.distance = Math.abs(match.rowError) + Math.abs(match.colError)
                             // don't allow exact matches of side by side headers
-                            if (sideHeaders.some(h => h.text === match.text)) return accu
+                            if (sideHeaders.some((h) => h.text === match.text)) return accu
                             //
                             if (match.score < missingScore && match.distance < incorrectDistance) accu.push(match)
                             return accu
@@ -308,57 +287,64 @@ async function analyze(
                 //console.log('descriptor results:')
                 //console.table(results)
                 // 4.2 analyze descriptor results
-                // TODO : combine errors of multiple headers from a single descriptor into one error
                 for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
                     const result = results[resultIndex]
                     if (result.score >= inconsistentScore)
                         errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text, result.index))
                     if (result.rowError !== 0)
                         errors.push(
-                            new IncorrectHeaderRow(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
+                            new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
                         )
                     if (result.colError !== 0)
                         errors.push(
-                            new IncorrectHeaderColumn(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
+                            new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
                         )
                 }
-                // TODO : this belongs to part 5.
-                // 4.1 search descriptor value
-                // 4.2 get position
+                // 5. search the descriptors value cell and check if it's not empty
+                // just make sure there is one cell that contains possible data
+                // after that we have enough information for a possible recovery
+                // 5.1 get original value cell position from config
                 let valueRow = config.type === 'object' ? descriptor.row : config.row
                 let valueColumn = config.type === 'object' ? descriptor.col : descriptor.index
                 let cell = sheet.getRow(valueRow).getCell(valueColumn)
-                // 4.3 calc alternate positions if possible
-                const incorrectIndex = errors.filter(function (error) {
+                // 5.2 calc alternate positions if incorrect header row or column indices are present
+                const incorrectIndices = errors.filter(function (error) {
                     return (error instanceof IncorrectRowIndex || error instanceof IncorrectColumnIndex) && error.key === descriptor.key
                 })
-                // 4.4 check the value
-                if (incorrectIndex.length < 1) {
+                if (incorrectIndices.length < 1) {
                     if (cell.type === ExcelJS.ValueType.Null) {
                         errors.push(new EmptyDataCell(filename, sheet.name, descriptor.key))
                     }
                     // valid data cell that contains some data we do not know jet, do nothing
                 } else {
-                    // calc alternate positions
-                    // all alternate positions of one descriptors header should point to the same cell
-                    for (let eCnt = 0; eCnt < incorrectIndex.length; eCnt++) {
-                        const error = incorrectIndex[eCnt]
+                    // 5.3 check alternate positions
+                    // TODO : all alternate positions of one descriptors header should point to the same cell
+                    const notEmpty = []
+                    if (cell.type !== ExcelJS.ValueType.Null) {
+                        notEmpty.push(cell)
+                    }
+                    for (let eCnt = 0; eCnt < incorrectIndices.length; eCnt++) {
+                        const error = incorrectIndices[eCnt]
                         const header = descriptor.header[error.header]
-                        header.relativeRow = valueRow - header.row
-                        header.relativeColumn = valueColumn - header.col
-                        header.rowOffset = error instanceof IncorrectRowIndex ? error.row - header.row : 0
-                        header.columnOffset = error instanceof IncorrectColumnIndex ? error.column - header.col : 0
-                        header.alternateRow = header.row + header.rowOffset + header.relativeRow
-                        header.alternateColumn = header.col + header.columnOffset + header.relativeColumn
+                        const relativeRow = valueRow - header.row
+                        const relativeColumn = valueColumn - header.col
+                        const rowOffset = error instanceof IncorrectRowIndex ? error.row - header.row : 0
+                        const columnOffset = error instanceof IncorrectColumnIndex ? error.column - header.col : 0
+                        const alternateRow = header.row + rowOffset + relativeRow
+                        const alternateColumn = header.col + columnOffset + relativeColumn
+                        const alternateCell = sheet.getRow(alternateRow).getCell(alternateColumn)
+                        //console.log(alternateCell)
+                        //console.log(alternateCell.row, alternateCell.col)
+                        if (alternateCell.type !== ExcelJS.ValueType.Null) {
+                            notEmpty.push(alternateCell)
+                        }
+                    }
+                    //console.log(notEmpty.length)
+                    if (notEmpty.length < 1) {
+                        errors.push(new EmptyDataCell(filename, sheet.name, descriptor.key))
                     }
                 }
             }
-            // 5. search value cell and check if it's not empty
-            // 5.1 get value cell position from config
-            // 5.2 calc alternate positions if incorrect header row or column indices are present
-            // 5.3 check positions
-            // what if original position and alternate position have a value?
-
             // this is the last analysation step! next adapt the config to the errors
             break
     }
