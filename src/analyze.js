@@ -6,18 +6,11 @@
 // [ ] : add a MixedRowIndex error for cases where multiple list headers are miss placed vertically
 // [ ] : support for horizontal lists ???
 
-const fs = require('fs').promises
 const ExcelJS = require('exceljs')
 const Fuse = require('fuse.js')
 
 const { validateConfig, validateMultiConfig } = require('./config.js')
-const { loadIndex, getWorksheetData } = require('./files.js')
-
-class FileNotExists extends Error {
-    constructor(filename) {
-        super(`File: '${filename}' doesn't exists.`)
-    }
-}
+const { loadIndex, getWorkbook, getWorksheetData, Errors: FilesErrors } = require('./files.js')
 
 class AnalysationError {
     constructor(filename, message) {
@@ -93,7 +86,7 @@ class EmptyDataCell extends AnalysationError {
 // TODO : maybe split up config and file related errors into their own modules (ConfigErrors, FileErrors)
 class Errors {
     static AnalysationError = AnalysationError
-    static FileNotExists = FileNotExists
+    static FileNotExists = FilesErrors.FileNotExists
     static ConfigInvalid = ConfigInvalid
     static SheetMissing = SheetMissing
     static InconsistentSheetName = InconsistentSheetName
@@ -140,54 +133,42 @@ async function analyze(
         }
     } = {}
 ) {
-    // TODO : use getWorkbook() function to get the workbook
-    // check file access
     try {
-        await fs.access(filename, fs.constants.W_OK | fs.constants.R_OK)
+        workbook = await getWorkbook(filename, {
+            create: false,
+            ignoreNodes: [
+                'sheetPr',
+                'dimension',
+                'sheetViews',
+                'sheetFormatPr',
+                //'cols',
+                //'sheetData',
+                'autoFilter',
+                //'mergeCells',
+                'rowBreaks',
+                'hyperlinks',
+                'pageMargins',
+                'dataValidations',
+                'pageSetup',
+                'headerFooter',
+                'printOptions',
+                'picture',
+                'drawing',
+                'sheetProtection',
+                'tableParts',
+                'conditionalFormatting',
+                'extLst'
+            ]
+        })
     } catch (error) {
-        throw new FileNotExists(filename)
+        throw error
     }
-    // read the file
-    if (workbook === null || workbookName !== filename) {
-        if (workbook === null) workbook = new ExcelJS.Workbook()
-        try {
-            await workbook.xlsx.readFile(filename, {
-                ignoreNodes: [
-                    'sheetPr',
-                    'dimension',
-                    'sheetViews',
-                    'sheetFormatPr',
-                    //'cols',
-                    //'sheetData',
-                    'autoFilter',
-                    //'mergeCells',
-                    'rowBreaks',
-                    'hyperlinks',
-                    'pageMargins',
-                    'dataValidations',
-                    'pageSetup',
-                    'headerFooter',
-                    'printOptions',
-                    'picture',
-                    'drawing',
-                    'sheetProtection',
-                    'tableParts',
-                    'conditionalFormatting',
-                    'extLst'
-                ]
-            })
-            workbookName = filename
-        } catch (error) {
-            // early break out because we cannot read the file
-            errors.push(error)
-            return errors
-        }
-    }
+
     // analyze config and use results as flags
     const isConfig = validateConfig(config)
     const isMultiConfig = validateMultiConfig(config)
     // test the file based on the config by trying to access the data
-    let errors = []
+    const errors = []
     switch (true) {
         case !isConfig && !isMultiConfig:
             throw new ConfigInvalid([...validateConfig.errors, ...validateMultiConfig.errors])
@@ -304,9 +285,9 @@ async function analyze(
                 // just make sure there is one cell that contains possible data
                 // after that we have enough information for a possible recovery
                 // 5.1 get original value cell position from config
-                let valueRow = config.type === 'object' ? descriptor.row : config.row
-                let valueColumn = config.type === 'object' ? descriptor.col : descriptor.index
-                let cell = sheet.getRow(valueRow).getCell(valueColumn)
+                const valueRow = config.type === 'object' ? descriptor.row : config.row
+                const valueColumn = config.type === 'object' ? descriptor.col : descriptor.index
+                const cell = sheet.getRow(valueRow).getCell(valueColumn)
                 // 5.2 calc alternate positions if incorrect header row or column indices are present
                 const incorrectIndices = errors.filter(function (error) {
                     return (error instanceof IncorrectHeaderRow || error instanceof IncorrectHeaderColumn) && error.key === descriptor.key
