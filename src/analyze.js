@@ -56,7 +56,7 @@ class InconsistentHeaderName extends AnalysationError {
         this.index = index
     }
 }
-class IncorrectColumnIndex extends AnalysationError {
+class IncorrectHeaderColumn extends AnalysationError {
     constructor(filename, worksheet, key, column, header) {
         super(filename, `Worksheet: '${worksheet}' column index: '${key}' seems to be: ${column}.`)
         this.key = key
@@ -65,7 +65,7 @@ class IncorrectColumnIndex extends AnalysationError {
     }
 }
 
-class IncorrectRowIndex extends AnalysationError {
+class IncorrectHeaderRow extends AnalysationError {
     constructor(filename, worksheet, key, row, header) {
         super(filename, `Worksheet: '${worksheet}' row index: '${key}' seems to be: ${row}.`)
         this.key = key
@@ -98,8 +98,8 @@ class Errors {
     static SheetMissing = SheetMissing
     static InconsistentSheetName = InconsistentSheetName
     static InconsistentHeaderName = InconsistentHeaderName
-    static IncorrectColumnIndex = IncorrectColumnIndex
-    static IncorrectRowIndex = IncorrectRowIndex
+    static IncorrectHeaderColumn = IncorrectHeaderColumn
+    static IncorrectHeaderRow = IncorrectHeaderRow
     static MissingDataHeader = MissingDataHeader
     static EmptyDataCell = EmptyDataCell
 }
@@ -293,11 +293,11 @@ async function analyze(
                         errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text, result.index))
                     if (result.rowError !== 0)
                         errors.push(
-                            new IncorrectRowIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
+                            new IncorrectHeaderRow(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
                         )
                     if (result.colError !== 0)
                         errors.push(
-                            new IncorrectColumnIndex(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
+                            new IncorrectHeaderColumn(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
                         )
                 }
                 // 5. search the descriptors value cell and check if it's not empty
@@ -309,7 +309,7 @@ async function analyze(
                 let cell = sheet.getRow(valueRow).getCell(valueColumn)
                 // 5.2 calc alternate positions if incorrect header row or column indices are present
                 const incorrectIndices = errors.filter(function (error) {
-                    return (error instanceof IncorrectRowIndex || error instanceof IncorrectColumnIndex) && error.key === descriptor.key
+                    return (error instanceof IncorrectHeaderRow || error instanceof IncorrectHeaderColumn) && error.key === descriptor.key
                 })
                 if (incorrectIndices.length < 1) {
                     if (cell.type === ExcelJS.ValueType.Null) {
@@ -328,8 +328,8 @@ async function analyze(
                         const header = descriptor.header[error.header]
                         const relativeRow = valueRow - header.row
                         const relativeColumn = valueColumn - header.col
-                        const rowOffset = error instanceof IncorrectRowIndex ? error.row - header.row : 0
-                        const columnOffset = error instanceof IncorrectColumnIndex ? error.column - header.col : 0
+                        const rowOffset = error instanceof IncorrectHeaderRow ? error.row - header.row : 0
+                        const columnOffset = error instanceof IncorrectHeaderColumn ? error.column - header.col : 0
                         const alternateRow = header.row + rowOffset + relativeRow
                         const alternateColumn = header.col + columnOffset + relativeColumn
                         const alternateCell = sheet.getRow(alternateRow).getCell(alternateColumn)
