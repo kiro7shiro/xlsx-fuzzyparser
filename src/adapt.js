@@ -2,6 +2,8 @@
  * Module for adapting a config object.
  */
 
+// TODO : combine errors of multiple headers from a single descriptor into one error
+
 const { validateConfig, validateMultiConfig } = require('./config.js')
 const { Errors: AnalysationErrors } = require('./analyze.js')
 
@@ -84,7 +86,7 @@ function adapt(config, errors) {
             }
             // incorrect indexes
             const incorrectIndex = errors.filter(function (error) {
-                return error instanceof AnalysationErrors.IncorrectRowIndex || error instanceof AnalysationErrors.IncorrectColumnIndex
+                return error instanceof AnalysationErrors.IncorrectHeaderRow || error instanceof AnalysationErrors.IncorrectHeaderColumn
             })
             for (let iCnt = 0; iCnt < incorrectIndex.length; iCnt++) {
                 // TODO : calc alternate positions for value cells
@@ -93,7 +95,7 @@ function adapt(config, errors) {
                     return desc.key === error.key
                 })
                 const header = descriptor.header[error.header]
-                if (error instanceof AnalysationErrors.IncorrectRowIndex) {
+                if (error instanceof AnalysationErrors.IncorrectHeaderRow) {
                     header.row = error.row
                 } else {
                     header.col = error.column
