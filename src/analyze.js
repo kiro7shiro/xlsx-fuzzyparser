@@ -97,11 +97,6 @@ class Errors {
     static EmptyDataCell = EmptyDataCell
 }
 
-// TODO : use getWorkbook() function to get the workbook as it has a built in chaching system
-// TODO : implement a GLOBAL cache that can hold multiple workbooks
-let workbook = null
-let workbookName = null
-
 // TODO : add the ability to accept strings for pointing to a config file
 /**
  * Analyze a *.xlsx file by a given configuration. Returning the differences as errors.
@@ -133,37 +128,32 @@ async function analyze(
         }
     } = {}
 ) {
-    try {
-        workbook = await getWorkbook(filename, {
-            create: false,
-            ignoreNodes: [
-                'sheetPr',
-                'dimension',
-                'sheetViews',
-                'sheetFormatPr',
-                //'cols',
-                //'sheetData',
-                'autoFilter',
-                //'mergeCells',
-                'rowBreaks',
-                'hyperlinks',
-                'pageMargins',
-                'dataValidations',
-                'pageSetup',
-                'headerFooter',
-                'printOptions',
-                'picture',
-                'drawing',
-                'sheetProtection',
-                'tableParts',
-                'conditionalFormatting',
-                'extLst'
-            ]
-        })
-    } catch (error) {
-        throw error
-    }
-
+    const workbook = await getWorkbook(filename, {
+        create: false,
+        ignoreNodes: [
+            'sheetPr',
+            'dimension',
+            'sheetViews',
+            'sheetFormatPr',
+            //'cols',
+            //'sheetData',
+            'autoFilter',
+            //'mergeCells',
+            'rowBreaks',
+            'hyperlinks',
+            'pageMargins',
+            'dataValidations',
+            'pageSetup',
+            'headerFooter',
+            'printOptions',
+            'picture',
+            'drawing',
+            'sheetProtection',
+            'tableParts',
+            'conditionalFormatting',
+            'extLst'
+        ]
+    })
     // analyze config and use results as flags
     const isConfig = validateConfig(config)
     const isMultiConfig = validateMultiConfig(config)
@@ -296,7 +286,7 @@ async function analyze(
                     if (cell.type === ExcelJS.ValueType.Null) {
                         errors.push(new EmptyDataCell(filename, sheet.name, descriptor.key))
                     }
-                    // valid data cell that contains some data we do not know jet, do nothing
+                    // at this point assume a valid data cell that contains some data we do not know jet, do nothing
                 } else {
                     // 5.3 check alternate positions
                     // TODO : all alternate positions of one descriptors header should point to the same cell
