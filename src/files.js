@@ -19,7 +19,7 @@ class Errors {
 
 const fileCache = new Map()
 
-async function getWorkbook(filepath, { create = true } = {}) {
+async function getWorkbook(filepath, { create = true, ignoreNodes = [] } = {}) {
     // TODO : implement an expire condition
     // TODO : check if file was rewritten during calls and reload it if true
     let workbook = null
@@ -30,7 +30,7 @@ async function getWorkbook(filepath, { create = true } = {}) {
     }
     if (!fileCache.has(filepath)) {
         workbook = new ExcelJS.Workbook()
-        await workbook.xlsx.readFile(filepath)
+        await workbook.xlsx.readFile(filepath, { ignoreNodes })
         fileCache.set(filepath, workbook)
     }
     return fileCache.get(filepath)
@@ -76,6 +76,7 @@ function getWorksheetData(worksheet, { startRow = null, rowCount = null, startCo
 
 function createConfig(workbook) {}
 
+// TODO : implement options for sheet and cell keys
 /**
  * Loads an index of the contents of an Excel file from a JSON file.
  *
