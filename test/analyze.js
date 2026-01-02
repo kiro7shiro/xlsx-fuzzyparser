@@ -20,7 +20,7 @@ describe('analyze', function () {
         const { SheetMissing: config } = testConfig
         const [error] = await analyze(testFile, config)
         assert.ok(error instanceof Errors.SheetMissing, `Expected error to be an instance of 'SheetMissing' but got: '${error.constructor.name}'`)
-        assert.strictEqual(error.worksheet, config.worksheet)
+        assert.strictEqual(error.worksheet, config.sheetName)
     })
     it('InconsistentSheetName', async function () {
         const { InconsistentSheetName: config } = testConfig

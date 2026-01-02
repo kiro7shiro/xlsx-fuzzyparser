@@ -1,9 +1,10 @@
 // TODO 
 // [ ] : redefine schema to add descriptors
 // [ ] : redefine schema to add headers
-// [ ] : rename header to headers in configs descriptors
-// [ ] : rename col to column in headers
-// [ ] : rename worksheet to sheetName
+// [x] : rename header to headers in configs descriptors
+// [x] : rename col to column in headers
+// [x] : rename worksheet to sheetName
+// [ ] : add parsers to configuration
 const Ajv = require("ajv")
 
 const columnsSchema = {
@@ -28,10 +29,10 @@ const fieldsSchema = {
         type: 'object',
         properties: {
             row: { type: 'integer' },
-            col: { type: 'integer' },
+            column: { type: 'integer' },
             key: { type: 'string' },
         },
-        required: ['row', 'col', 'key']
+        required: ['row', 'column', 'key']
     }
 }
 
@@ -40,12 +41,12 @@ const configSchema = {
     type: 'object',
     properties: {
         type: { type: 'string', pattern: 'list\\b|object\\b' },
-        worksheet: { type: 'string', minLength: 1 },
+        sheetName: { type: 'string', minLength: 1 },
         row: { type: 'integer' },
         columns: { $ref: 'columns' },
         fields: { $ref: 'fields' }
     },
-    required: ['type', 'worksheet'],
+    required: ['type', 'sheetName'],
     if: { properties: { type: { type: 'string', pattern: 'list\\b' } } },
     then: { required: ['columns'] },
     else: {

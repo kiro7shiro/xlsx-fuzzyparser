@@ -35,8 +35,8 @@ class SheetMissing extends AnalysationError {
 
 class InconsistentSheetName extends AnalysationError {
     constructor(filename, inconsistentName, config) {
-        super(filename, config.worksheet, `Worksheet: '${config.worksheet}' is present but named inconsistent.`)
-        this.worksheet = config.worksheet
+        super(filename, config.sheetName, `Worksheet: '${config.sheetName}' is present but named inconsistent.`)
+        this.worksheet = config.sheetName
         this.inconsistentName = inconsistentName
     }
 }
@@ -182,9 +182,9 @@ async function analyze(
                 sheetNamesIndex = Fuse.createIndex(sheetEngineOptions.keys, workbook.worksheets)
             }
             const sheetEngine = new Fuse(workbook.worksheets, sheetEngineOptions, sheetNamesIndex)
-            const searchSheet = sheetEngine.search(config.worksheet)
+            const searchSheet = sheetEngine.search(config.sheetName)
             if (searchSheet.length === 0) {
-                errors.push(new SheetMissing(filename, config.worksheet))
+                errors.push(new SheetMissing(filename, config.sheetName))
                 // early break out the switch statement, because the sheet can't be accessed
                 break
             }
@@ -213,13 +213,13 @@ async function analyze(
             const headEngine = new Fuse(data, headEngineOptions, sheetIndex)
             for (let descriptorIndex = 0; descriptorIndex < descriptors.length; descriptorIndex++) {
                 const descriptor = descriptors[descriptorIndex]
-                if (!Object.hasOwn(descriptor, 'header')) continue
-                if (!Array.isArray(descriptor.header)) continue
-                if (descriptor.header.length === 0) continue
+                if (!Object.hasOwn(descriptor, 'headers')) continue
+                if (!Array.isArray(descriptor.headers)) continue
+                if (descriptor.headers.length === 0) continue
                 let results = []
-                for (let headerIndex = 0; headerIndex < descriptor.header.length; headerIndex++) {
-                    const header = descriptor.header[headerIndex]
-                    const sideHeaders = descriptor.header.reduce(function (a, c, i) {
+                for (let headerIndex = 0; headerIndex < descriptor.headers.length; headerIndex++) {
+                    const header = descriptor.headers[headerIndex]
+                    const sideHeaders = descriptor.headers.reduce(function (a, c, i) {
                         if (i === headerIndex) return a
                         a.push(c)
                         return a
@@ -232,7 +232,7 @@ async function analyze(
                     matches = matches
                         .reduce(function (accu, match) {
                             match.rowError = match.item.row - header.row
-                            match.colError = match.item.col - header.col
+                            match.colError = match.item.col - header.column
                             match.text = match.item.text
                             match.distance = Math.abs(match.rowError) + Math.abs(match.colError)
                             // don't allow exact matches of side by side headers
@@ -255,6 +255,7 @@ async function analyze(
                     result.index = headerIndex
                     results.push(result)
                 }
+                //console.log(descriptor)
                 //console.log('descriptor results:')
                 //console.table(results)
                 // 4.2 analyze descriptor results
@@ -264,11 +265,11 @@ async function analyze(
                         errors.push(new InconsistentHeaderName(filename, sheet.name, descriptor.key, result.text, result.index))
                     if (result.rowError !== 0)
                         errors.push(
-                            new IncorrectHeaderRow(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].row + result.rowError, result.index)
+                            new IncorrectHeaderRow(filename, sheet.name, descriptor.key, descriptor.headers[resultIndex].row + result.rowError, result.index)
                         )
                     if (result.colError !== 0)
                         errors.push(
-                            new IncorrectHeaderColumn(filename, sheet.name, descriptor.key, descriptor.header[resultIndex].col + result.colError, result.index)
+                            new IncorrectHeaderColumn(filename, sheet.name, descriptor.key, descriptor.headers[resultIndex].column + result.colError, result.index)
                         )
                 }
                 // 5. search the descriptors value cell and check if it's not empty
@@ -276,7 +277,7 @@ async function analyze(
                 // after that we have enough information for a possible recovery
                 // 5.1 get original value cell position from config
                 const valueRow = config.type === 'object' ? descriptor.row : config.row
-                const valueColumn = config.type === 'object' ? descriptor.col : descriptor.index
+                const valueColumn = config.type === 'object' ? descriptor.column : descriptor.index
                 const cell = sheet.getRow(valueRow).getCell(valueColumn)
                 // 5.2 calc alternate positions if incorrect header row or column indices are present
                 const incorrectIndices = errors.filter(function (error) {
@@ -296,13 +297,13 @@ async function analyze(
                     }
                     for (let eCnt = 0; eCnt < incorrectIndices.length; eCnt++) {
                         const error = incorrectIndices[eCnt]
-                        const header = descriptor.header[error.header]
+                        const header = descriptor.headers[error.header]
                         const relativeRow = valueRow - header.row
-                        const relativeColumn = valueColumn - header.col
+                        const relativeColumn = valueColumn - header.column
                         const rowOffset = error instanceof IncorrectHeaderRow ? error.row - header.row : 0
-                        const columnOffset = error instanceof IncorrectHeaderColumn ? error.column - header.col : 0
+                        const columnOffset = error instanceof IncorrectHeaderColumn ? error.column - header.column : 0
                         const alternateRow = header.row + rowOffset + relativeRow
-                        const alternateColumn = header.col + columnOffset + relativeColumn
+                        const alternateColumn = header.column + columnOffset + relativeColumn
                         const alternateCell = sheet.getRow(alternateRow).getCell(alternateColumn)
                         //console.log(alternateCell)
                         //console.log(alternateCell.row, alternateCell.col)
