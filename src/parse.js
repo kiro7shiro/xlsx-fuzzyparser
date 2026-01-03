@@ -45,14 +45,16 @@ async function parse(filepath, config = null) {
     }
     if (isMultiConfig) {
         // parse a multi config
-        for (const key of config) {
-            const subConfig = fileConfig[key]
-            await parse(filepath, subConfig)
+        const result = {}
+        for (const key in config) {
+            const subConfig = config[key]
+            result[key] = await parse(filepath, subConfig)
         }
+        return result
     } else {
         const workbook = await getWorkbook(filepath)
         const worksheet = workbook.getWorksheet(config.sheetName)
-        let result = []
+        let parsed = []
         if (config.type === 'object') {
             const obj = {}
             for (let fCnt = 0; fCnt < config.fields.length; fCnt++) {
@@ -64,12 +66,12 @@ async function parse(filepath, config = null) {
                 }
             }
             if (config.parsers) config.parsers.map((parser) => parser(obj))
-            result.push(obj)
+            parsed.push(obj)
         } else {
             const startRow = config === null ? 1 : config.row
             // TODO : calc an endRow variable
             const rows = worksheet.getRows(startRow, worksheet.rowCount).filter((r) => !r.hidden && r.hasValues)
-            result = rows.map(function (row) {
+            parsed = rows.map(function (row) {
                 const obj = {}
                 for (let cCnt = 0; cCnt < config.columns.length; cCnt++) {
                     const column = config.columns[cCnt]
@@ -82,7 +84,7 @@ async function parse(filepath, config = null) {
                 return obj
             })
         }
-        return result
+        return parsed
     }
 }
 
