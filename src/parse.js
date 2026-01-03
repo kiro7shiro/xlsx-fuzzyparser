@@ -5,7 +5,7 @@
 const fs = require('fs')
 const path = require('path')
 const { validateConfig, validateMultiConfig } = require('./config.js')
-const { getWorkbook, getWorksheetData } = require('./files.js')
+const { getWorkbook } = require('./files.js')
 
 class ParsingError extends Error {
     constructor(filepath, message) {
@@ -51,28 +51,34 @@ async function parse(filepath, config = null) {
         }
     } else {
         const workbook = await getWorkbook(filepath)
-        const worksheet = workbook.getWorksheet(config.worksheet)
+        const worksheet = workbook.getWorksheet(config.sheetName)
         let result = []
         if (config.type === 'object') {
             const obj = {}
             for (let fCnt = 0; fCnt < config.fields.length; fCnt++) {
                 const field = config.fields[fCnt]
-                const value = worksheet.getRow(field.row).values[field.col]
-                obj[field.key] = value
+                const cell = worksheet.getRow(field.row).getCell[field.column]
+                obj[field.key] = cell.text
+                if (Object.hasOwn(field, 'parser')) {
+                    obj[field.key] = field.parser(cell)
+                }
             }
-            if (config.parsers) config.parsers.map(parser => parser(obj))
+            if (config.parsers) config.parsers.map((parser) => parser(obj))
             result.push(obj)
         } else {
             const startRow = config === null ? 1 : config.row
-            const rows = worksheet.getRows(startRow, worksheet.rowCount)
+            // TODO : calc an endRow variable
+            const rows = worksheet.getRows(startRow, worksheet.rowCount).filter((r) => !r.hidden && r.hasValues)
             result = rows.map(function (row) {
-                const values = row.values
                 const obj = {}
                 for (let cCnt = 0; cCnt < config.columns.length; cCnt++) {
                     const column = config.columns[cCnt]
-                    obj[column.key] = values[column.index]
+                    const cell = row.getCell(column.index)
+                    obj[column.key] = cell.text
+                    if (Object.hasOwn(column, 'parser')) {
+                        obj[column.key] = column.parser(cell)
+                    }
                 }
-                if (config.parsers) config.parsers.map(parser => parser(obj))
                 return obj
             })
         }
