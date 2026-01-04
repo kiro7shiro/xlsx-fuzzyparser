@@ -41,6 +41,10 @@ async function parse(filepath, config = null) {
     if (!isConfig && !isMultiConfig) {
         // TODO : throw error for invalid config
         // TODO : import errors from config.js
+        if(!isConfig) {
+            console.log(validateConfig.errors)
+            console.log(config)
+        }
         return false
     }
     if (isMultiConfig) {
@@ -52,6 +56,8 @@ async function parse(filepath, config = null) {
         }
         return result
     } else {
+        // TODO : make an error check when the sheet is not present in the file
+        // this is part of the analyzing step
         const workbook = await getWorkbook(filepath)
         const worksheet = workbook.getWorksheet(config.sheetName)
         let parsed = []
@@ -59,13 +65,12 @@ async function parse(filepath, config = null) {
             const obj = {}
             for (let fCnt = 0; fCnt < config.fields.length; fCnt++) {
                 const field = config.fields[fCnt]
-                const cell = worksheet.getRow(field.row).getCell[field.column]
+                const cell = worksheet.getRow(field.row).getCell(field.column)
                 obj[field.key] = cell.text
                 if (Object.hasOwn(field, 'parser')) {
                     obj[field.key] = field.parser(cell)
                 }
             }
-            if (config.parsers) config.parsers.map((parser) => parser(obj))
             parsed.push(obj)
         } else {
             const startRow = config === null ? 1 : config.row
