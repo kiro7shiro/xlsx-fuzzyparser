@@ -87,18 +87,16 @@ async function serialize(
                 for (let dIndex = 0; dIndex < data.length; dIndex++) {
                     // format data
                     const dataObj = data[dIndex]
-                    const rowValues = []
                     for (let cCnt = 0; cCnt < config.columns.length; cCnt++) {
                         const column = config.columns[cCnt]
+                        const cell = worksheet.getRow(startRow + dIndex).getCell(column.index)
                         if (Object.hasOwn(column, 'formatter')) {
-                            const cellValue = column.formatter(dataObj)
-                            rowValues.push(cellValue)
+                            const cellValue = column.formatter(dataObj, cell)
+                            if (cellValue !== null) cell.value = cellValue
                         } else {
-                            rowValues.push(dataObj[column.key])
+                            cell.value = dataObj[column.key]
                         }
                     }
-                    const row = worksheet.getRow(startRow + dIndex)
-                    row.values = rowValues
                 }
             } else {
                 // append list data
