@@ -22,9 +22,9 @@ class Errors {
 /**
  * Parse a *.xlsx file into a data object.
  * @param {String} filepath
- * @param {Object} config
+ * @param {Object} config // TODO : make config optional
  */
-async function parse(filepath, config = null) {
+async function parse(filepath, config = null, { withHeaders = true } = {}) {
     // check config
     if (config === null) throw new ParsingError(filepath, `Can't parse: ${path.basename(filepath)}. No config given.`)
     if (typeof config === 'string') {
@@ -41,7 +41,7 @@ async function parse(filepath, config = null) {
     if (!isConfig && !isMultiConfig) {
         // TODO : throw error for invalid config
         // TODO : import errors from config.js
-        if(!isConfig) {
+        if (!isConfig) {
             console.log(validateConfig.errors)
             console.log(config)
         }
@@ -73,7 +73,7 @@ async function parse(filepath, config = null) {
             }
             parsed.push(obj)
         } else {
-            const startRow = config === null ? 1 : config.row
+            const startRow = withHeaders ? config.row + 1 : config.row
             // TODO : calc an endRow variable
             const rows = worksheet.getRows(startRow, worksheet.rowCount).filter((r) => !r.hidden && r.hasValues)
             parsed = rows.map(function (row) {
